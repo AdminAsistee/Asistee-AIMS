@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\User;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Routing\Controller as BaseController;
@@ -124,8 +124,8 @@ class Controller extends BaseController {
 	 *
 	 * @return array
 	 */
-	protected function mutateForCreation( $request ) {
-
+	protected function mutateForCreation(array $request = []): array
+	{
 		return $request;
 	}
 
@@ -137,8 +137,8 @@ class Controller extends BaseController {
 	 *
 	 * @return array
 	 */
-	protected function mutateForUpdate( $request ) {
-
+	protected function mutateForUpdate(array $request = []): array
+	{
 		return $request;
 	}
 }

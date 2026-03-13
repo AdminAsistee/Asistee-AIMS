@@ -168,7 +168,7 @@ class BookingController extends Controller {
 	 *
 	 * @return array
 	 */
-	protected function mutateForCreation( $request ) {
+	protected function mutateForCreation(array $request = []): array {
 		if ( ! isset( $request['beds'] ) ) {
 			$request['beds'] = $request['guests'];
 		}

@@ -265,7 +265,7 @@ class CleaningController extends Controller {
 	 *
 	 * @return array
 	 */
-	protected function mutateForUpdate( $request ) {
+	protected function mutateForUpdate(array $request = []): array {
 		// if cleaner , set cleaner id to self
 		if ( Gate::allows( 'cleaner' ) ) {
 			$request['cleaner_id'] = Auth::id();

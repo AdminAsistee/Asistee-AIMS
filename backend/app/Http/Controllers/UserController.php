@@ -2,223 +2,197 @@
 
 namespace App\Http\Controllers;
 
-use App\PasswordResets;
+use App\Models\PasswordResets;
+use App\Models\User;
 use App\Rules\EnsureOneAdmin;
 use App\Rules\TokenFresh;
 use App\Scopes\UserFilter;
-use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
-class UserController extends Controller {
-	protected $validationRulesForCreation = [
-		'name'     => 'required|min:3',
-		'email'    => 'required|email|unique:users,email',
-		'password' => 'required|min:6|max:64',
-	];
+class UserController extends Controller
+{
+    protected array $validationRulesForCreation = [
+        'name'     => 'required|min:3',
+        'email'    => 'required|email|unique:users,email',
+        'password' => 'required|min:6|max:64',
+    ];
 
-	protected $validationRulesForUpdate = [
-		'name'     => 'min:3',
-		'email'    => 'email|unique:users,email',
-		'password' => 'min:6|max:64',
-	];
+    protected array $validationRulesForUpdate = [
+        'name'     => 'min:3',
+        'email'    => 'email|unique:users,email',
+        'password' => 'min:6|max:64',
+    ];
 
-	protected $validationRulesForPasswordResetRequest = [
-		'email' => 'required|exists:users,email'
-	];
+    protected array $validationRulesForPasswordResetRequest = [
+        'email' => 'required|exists:users,email',
+    ];
 
-	protected $validationRulesForPasswordReset = [
-		'token'    => [ 'required', 'exists:password_resets,token' ],
-		'password' => 'required|min:6|max:64'
-	];
+    protected array $validationRulesForPasswordReset = [
+        'token'    => ['required', 'exists:password_resets,token'],
+        'password' => 'required|min:6|max:64',
+    ];
 
-	protected $updateable = [
-		'administrator' => [
-			'name',
-			'email',
-			'password',
-			'bio',
-			'phone',
-			'address',
-			'type'
-		]
-	];
-	private $validationRulesForDeletion;
+    protected array $updateable = [
+        'administrator' => ['name', 'email', 'password', 'bio', 'phone', 'address', 'type'],
+        'client'        => ['name', 'email', 'password', 'bio', 'phone', 'address'],
+        'supervisor'    => ['name', 'email', 'password', 'bio', 'phone', 'address'],
+        'cleaner'       => ['name', 'email', 'password', 'bio', 'phone', 'address'],
+    ];
 
-	public function __construct() {
-		// add rules classes for additional validation
-		$this->validationRulesForCreation['type']         = 'in:' . implode( ',', User::$types );
-		$this->validationRulesForUpdate['type'][]         = 'in:' . implode( ',', User::$types );
-		$this->validationRulesForUpdate['type'][]         = new EnsureOneAdmin;
-		$this->validationRulesForPasswordReset['token'][] = new TokenFresh;
-		$this->validationRulesForDeletion                 = [];
-	}
+    private array $validationRulesForDeletion = [];
 
-	/**
-	 * @param UserFilter $filter
-	 *
-	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function index( UserFilter $filter ) {
-		/** @var Paginator $users */
-		$users = User::filter( $filter )->paginate( 20 );
+    public function __construct()
+    {
+        $this->validationRulesForCreation['type'] = 'in:' . implode(',', User::$types);
+        $this->validationRulesForUpdate['type'][] = 'in:' . implode(',', User::$types);
+        $this->validationRulesForUpdate['type'][] = new EnsureOneAdmin;
+        $this->validationRulesForPasswordReset['token'][] = new TokenFresh;
+    }
 
-		return response( $users, 200 );
-	}
+    // ─── Login ────────────────────────────────────────────────────────────────
+    public function login(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $credentials = $request->validate([
+            'email'    => 'required|email',
+            'password' => 'required',
+        ]);
 
+        if (!Auth::attempt($credentials)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
+        }
 
-	/**
-	 * @param User $user
-	 *
-	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function show( User $user ) {
-		return response( $user, 200 );
-	}
+        /** @var User $user */
+        $user  = Auth::user();
+        $token = $user->createToken('aims-app')->plainTextToken;
 
-	/**
-	 * @param Request $request
-	 *
-	 * @return bool|\Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function register( Request $request ) {
+        return response()->json([
+            'token' => $token,
+            'user'  => $user,
+        ]);
+    }
 
-		if ( $this->validationFails( $request->all(), $this->validationRulesForCreation ) ) {
-			return $this->validationResponse;
-		}
-		$createdUser = User::create( $this->mutateForCreation( $request->all() ) );
+    // ─── Register ─────────────────────────────────────────────────────────────
+    public function register(Request $request): \Illuminate\Http\JsonResponse
+    {
+        if ($this->validationFails($request->all(), $this->validationRulesForCreation)) {
+            return $this->validationResponse;
+        }
 
-		return $this->creationSuccessResponse( 'User', $createdUser->id );
-	}
+        $user  = User::create($this->mutateForCreation($request->all()));
+        $token = $user->createToken('aims-app')->plainTextToken;
 
-	/**
-	 * Mutate necessary fields before creation
-	 *
-	 * @param array $request
-	 *
-	 * @return array
-	 */
-	protected function mutateForCreation( $request ) {
-		$request['password'] = bcrypt( $request['password'] );
-		$request['type']     = env( 'DEV_EMAIL' ) === $request['email'] ? 'administrator' : 'client';
+        return response()->json([
+            'message' => 'User Created!',
+            'token'   => $token,
+            'user'    => $user,
+        ], 201);
+    }
 
-		return $request;
-	}
+    protected function mutateForCreation(array $request = []): array
+    {
+        $request['password'] = bcrypt($request['password']);
+        $request['type']     = env('DEV_EMAIL') === $request['email'] ? 'administrator' : 'client';
+        return $request;
+    }
 
-	/**
-	 * @param User $user
-	 * @param Request $request
-	 *
-	 * @return bool|\Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function update( User $user, Request $request ) {
+    // ─── Logout ───────────────────────────────────────────────────────────────
+    public function logout(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->user()->currentAccessToken()->delete();
+        return response()->json(['message' => 'Logout successful!']);
+    }
 
-		$valid_requests = $request->only( $this->updateable[ \Auth::user()->type ] );
-		if ( $this->validationFails( $valid_requests, $this->validationRulesForUpdate ) ) {
-			return $this->validationResponse;
-		}
+    // ─── Me ───────────────────────────────────────────────────────────────────
+    public function me(Request $request): \Illuminate\Http\JsonResponse
+    {
+        return response()->json($request->user());
+    }
 
-		$user->update( $this->mutateForUpdate( $valid_requests ) );
+    // ─── List users (admin) ───────────────────────────────────────────────────
+    public function index(UserFilter $filter): Response
+    {
+        $users = User::filter($filter)->paginate(20);
+        return response($users, 200);
+    }
 
-		return $this->updateSuccessResponse( 'User' );
-	}
+    public function show(User $user): Response
+    {
+        return response($user, 200);
+    }
 
-	/**
-	 * Mutate necessary fields before update
-	 *
-	 * @param array $request
-	 *
-	 * @return array
-	 */
-	protected function mutateForUpdate( $request ) {
-		if ( isset( $request['password'] ) ) {
-			$request['password'] = bcrypt( $request['password'] );
-		}
+    public function update(User $user, Request $request): mixed
+    {
+        $userType = Auth::user()->type;
+        $allowed  = $this->updateable[$userType] ?? [];
+        $valid_requests = $request->only($allowed);
 
-		return $request;
-	}
+        if ($this->validationFails($valid_requests, $this->validationRulesForUpdate)) {
+            return $this->validationResponse;
+        }
 
-	/**
-	 * @param User $user
-	 *
-	 * @return bool|\Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function delete( User $user ) {
-		if ( $this->validationFails( [ 'id' => $user->id ], $this->validationRulesForDeletion ) ) {
-			return $this->validationResponse;
-		}
-		$user->delete();
+        $user->update($this->mutateForUpdate($valid_requests));
+        return $this->updateSuccessResponse('User');
+    }
 
-		return $this->deleteSuccessResponse( 'User' );
-	}
+    protected function mutateForUpdate(array $request = []): array
+    {
+        if (isset($request['password'])) {
+            $request['password'] = bcrypt($request['password']);
+        }
+        return $request;
+    }
 
-	/**
-	 * @param Request $request
-	 *
-	 * @return bool|\Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function requestPasswordReset( Request $request ) {
+    public function delete(User $user): mixed
+    {
+        if ($this->validationFails(['id' => $user->id], $this->validationRulesForDeletion)) {
+            return $this->validationResponse;
+        }
+        $user->delete();
+        return $this->deleteSuccessResponse('User');
+    }
 
-		if ( $this->validationFails( $request->all(), $this->validationRulesForPasswordResetRequest ) ) {
-			return $this->validationResponse;
-		}
-		$token = str_random( 32 );
-		PasswordResets::create( [ 'email' => $request->get( 'email' ), 'token' => $token ] );
-		User::whereEmail( $request->get( 'email' ) )->first()->sendPasswordResetNotification( $token );
+    // ─── Password Reset ───────────────────────────────────────────────────────
+    public function requestPasswordReset(Request $request): Response
+    {
+        if ($this->validationFails($request->all(), $this->validationRulesForPasswordResetRequest)) {
+            return $this->validationResponse;
+        }
 
-		return response( [ 'message' => 'reset instructions sent' ] );
-	}
+        $token = str()->random(32);
+        PasswordResets::create(['email' => $request->get('email'), 'token' => $token]);
+        User::whereEmail($request->get('email'))->first()->sendPasswordResetNotification($token);
 
-	/**
-	 * @param Request $request
-	 *
-	 * @return bool|\Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function performPasswordReset( Request $request ) {
+        return response(['message' => 'Reset instructions sent']);
+    }
 
-		if ( $this->validationFails( $request->all(), $this->validationRulesForPasswordReset ) ) {
-			return $this->validationResponse;
-		}
-		User::updatePassword( $request->token, $request->password );
+    public function performPasswordReset(Request $request): Response
+    {
+        if ($this->validationFails($request->all(), $this->validationRulesForPasswordReset)) {
+            return $this->validationResponse;
+        }
 
-		return response( [ 'message' => 'Password Updated' ], 200 );
-	}
+        User::updatePassword($request->token, $request->password);
+        return response(['message' => 'Password Updated'], 200);
+    }
 
-	/**
-	 * @param Request $request
-	 *
-	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function saveCard( Request $request ) {
-		$stripe_obj = $request->stripe;
-		$user       = \Auth::user();
-		if ( strlen( $user->card_last_four ) === 4 ) {
-			$user->updateCard( $stripe_obj['id'] );
-		} else {
-			$user->createAsStripeCustomer( $stripe_obj['id'], [ 'email' => $user->email ] );
-		}
+    // ─── Stripe ───────────────────────────────────────────────────────────────
+    public function saveCard(Request $request): Response
+    {
+        $stripe_obj = $request->stripe;
+        /** @var User $user */
+        $user = Auth::user();
 
-		// for charging $user->charge($amount)
-		// \Auth::user()->charge(2000);
+        if (strlen((string) $user->card_last_four) === 4) {
+            $user->updateCard($stripe_obj['id']);
+        } else {
+            $user->createAsStripeCustomer();
+        }
 
-		return response( $user, 200 );
-	}
-
-	/**
-	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function me() {
-		return response( \Auth::user(), 200 );
-	}
-
-	/**
-	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
-	 */
-	public function logout() {
-		\Auth::user()->token()->revoke();
-
-		return response( [ 'message' => 'Logout successful!' ] );
-	}
-
+        return response($user, 200);
+    }
 }

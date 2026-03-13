@@ -53,7 +53,7 @@ class LocationController extends Controller {
 	 *
 	 * @return array
 	 */
-	protected function mutateForCreation( $request ) {
+	protected function mutateForCreation(array $request = []): array {
 		$request['address'] = utf8_encode( $request['address'] );
 		$user               = Auth::user();
 		if ( $user->type == 'client' ) {

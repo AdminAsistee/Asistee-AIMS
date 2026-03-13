@@ -144,7 +144,7 @@ class SuppliesTransactionController extends Controller {
 	 *
 	 * @return array
 	 */
-	protected function mutateForUpdate( $request ) {
+	protected function mutateForUpdate(array $request = []): array {
 		// if ( Gate::allows( 'cleaner' ) ) {}
 		return $request;
 	}
