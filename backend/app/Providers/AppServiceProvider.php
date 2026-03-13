@@ -1,32 +1,20 @@
 <?php
 
-// TODO: Make validation tag that ensures object field type. 
-// Example: Cleaning SET CLEANER should validate 
-// Cleaner_id -> User[Type] == Cleaner (and not client, etc.)
-// For now leaving as possibility.
-
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Laravel\Cashier\Cashier;
+use Illuminate\Support\Facades\Schema;
 
-class AppServiceProvider extends ServiceProvider {
-	/**
-	 * Bootstrap any application services.
-	 *
-	 * @return void
-	 */
-	public function boot() {
-		\Schema::defaultStringLength( 191 );
-		Cashier::useCurrency( 'JPY', '￥' );
-	}
+class AppServiceProvider extends ServiceProvider
+{
+    public function boot(): void
+    {
+        // MySQL index key length fix for older MySQL versions
+        Schema::defaultStringLength(191);
+    }
 
-	/**
-	 * Register any application services.
-	 *
-	 * @return void
-	 */
-	public function register() {
-		//
-	}
+    public function register(): void
+    {
+        //
+    }
 }
