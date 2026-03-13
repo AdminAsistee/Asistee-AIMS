@@ -77,7 +77,7 @@ class UserController extends Controller
     }
 
     // ─── Register ─────────────────────────────────────────────────────────────
-    public function register(Request $request): \Illuminate\Http\JsonResponse
+    public function register(Request $request): mixed
     {
         if ($this->validationFails($request->all(), $this->validationRulesForCreation)) {
             return $this->validationResponse;
