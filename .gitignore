@@ -21,3 +21,8 @@ Thumbs.db
 
 backend-legacy/
 
+
+frontend-legacy/
+frontend/dist/
+frontend/.env
+
