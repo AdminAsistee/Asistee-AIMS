@@ -52,3 +52,19 @@
 - **Verified**: 70 routes in `artisan route:list`, login returns token, `/me` works, browser login redirects to dashboard as "Tech Admin (administrator)".
 - **Files affected**: `backend/bootstrap/app.php`, `backend/routes/api.php`, `backend/app/Http/Controllers/UserController.php`, `backend/app/Http/Controllers/Controller.php`, `backend/config/cors.php`, 5 other controllers.
 - **Git commit**: `cf8978e` — pushed to `main` on GitHub.
+
+---
+
+## 2026-03-16 06:20 (JST) — Phase 3: Module Pages Built
+- Built **Dashboard** with 4 live KPI stat cards (bookings, upcoming cleanings, locations, supplies).
+- Replaced all 6 stub pages with fully functional modules connected to the live Laravel 12 API:
+  - **Bookings** — paginated table, create/edit/delete modals (RHF + Zod).
+  - **Cleanings** — paginated table, TF-status badge, create modal, assign/unassign cleaner (admin/supervisor only).
+  - **Locations** — card grid with slide-in detail drawer, photo upload, create modal.
+  - **Supplies** — card grid with animated stock bars, create/buy/use stock modals.
+  - **Users** — admin-only paginated table, inline role editor, delete with confirmation.
+  - **Profile** — avatar initials, edit profile form, change password section.
+- Created shared infrastructure: `src/types/index.ts` (all model interfaces), 5 TanStack Query hook files (`useBookings`, `useCleanings`, `useLocations`, `useSupplies`, `useUsers`), 4 reusable UI components (`Modal`, `Badge`, `Pagination`, `ConfirmDialog`).
+- **Build verified**: `tsc --noEmit` → 0 errors. `vite build` → ✓ built in 5.4s.
+- **Files affected**: `frontend/src/types/index.ts`, `frontend/src/hooks/` (5 files), `frontend/src/components/ui/` (4 files), `frontend/src/pages/` (7 files).
+

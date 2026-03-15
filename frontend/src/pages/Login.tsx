@@ -39,13 +39,13 @@ export default function Login() {
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input {...register('email')} type="email" className="input" placeholder="you@example.com" />
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input id="email" {...register('email')} type="email" className="input" placeholder="you@example.com" />
             {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input {...register('password')} type="password" className="input" placeholder="••••••••" />
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input id="password" {...register('password')} type="password" className="input" placeholder="••••••••" />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
           <button type="submit" disabled={isSubmitting} className="btn-primary w-full mt-2">

@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Supplies" [level=1] [ref=e49]
+          - paragraph [ref=e50]: 0 supply items
+        - button "New Supply" [active] [ref=e51] [cursor=pointer]:
+          - img [ref=e52]
+          - text: New Supply
+      - generic [ref=e54]: No supply items found.
+      - dialog [ref=e55]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - heading "New Supply Item" [level=2] [ref=e59]
+            - button "Close modal" [ref=e60] [cursor=pointer]:
+              - img [ref=e61]
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]: Name
+              - textbox "e.g. Bed Sheets" [ref=e68]
+            - generic [ref=e69]:
+              - generic [ref=e70]:
+                - generic [ref=e71]: ready stock
+                - spinbutton [ref=e72]: "0"
+              - generic [ref=e73]:
+                - generic [ref=e74]: in use stock
+                - spinbutton [ref=e75]: "0"
+              - generic [ref=e76]:
+                - generic [ref=e77]: in maintenance stock
+                - spinbutton [ref=e78]: "0"
+            - generic [ref=e79]:
+              - button "Cancel" [ref=e80] [cursor=pointer]
+              - button "Create Supply" [ref=e81] [cursor=pointer]
+```

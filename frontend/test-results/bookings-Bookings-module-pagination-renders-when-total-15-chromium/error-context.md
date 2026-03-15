@@ -1,0 +1,102 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [active] [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Bookings" [level=1] [ref=e49]
+          - paragraph [ref=e50]: 0 total bookings
+        - button "New Booking" [ref=e51] [cursor=pointer]:
+          - img [ref=e52]
+          - text: New Booking
+      - table [ref=e55]:
+        - rowgroup [ref=e56]:
+          - row "# Listing Check-in Check-out Guests Beds" [ref=e57]:
+            - columnheader "#" [ref=e58]
+            - columnheader "Listing" [ref=e59]
+            - columnheader "Check-in" [ref=e60]
+            - columnheader "Check-out" [ref=e61]
+            - columnheader "Guests" [ref=e62]
+            - columnheader "Beds" [ref=e63]
+            - columnheader [ref=e64]
+        - rowgroup [ref=e65]:
+          - row [ref=e66]:
+            - cell [ref=e67]
+            - cell [ref=e69]
+            - cell [ref=e71]
+            - cell [ref=e73]
+            - cell [ref=e75]
+            - cell [ref=e77]
+            - cell [ref=e79]
+          - row [ref=e81]:
+            - cell [ref=e82]
+            - cell [ref=e84]
+            - cell [ref=e86]
+            - cell [ref=e88]
+            - cell [ref=e90]
+            - cell [ref=e92]
+            - cell [ref=e94]
+          - row [ref=e96]:
+            - cell [ref=e97]
+            - cell [ref=e99]
+            - cell [ref=e101]
+            - cell [ref=e103]
+            - cell [ref=e105]
+            - cell [ref=e107]
+            - cell [ref=e109]
+          - row [ref=e111]:
+            - cell [ref=e112]
+            - cell [ref=e114]
+            - cell [ref=e116]
+            - cell [ref=e118]
+            - cell [ref=e120]
+            - cell [ref=e122]
+            - cell [ref=e124]
+          - row [ref=e126]:
+            - cell [ref=e127]
+            - cell [ref=e129]
+            - cell [ref=e131]
+            - cell [ref=e133]
+            - cell [ref=e135]
+            - cell [ref=e137]
+            - cell [ref=e139]
+```

@@ -1,0 +1,92 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Bookings" [level=1] [ref=e49]
+          - paragraph [ref=e50]: 0 total bookings
+        - button "New Booking" [active] [ref=e51] [cursor=pointer]:
+          - img [ref=e52]
+          - text: New Booking
+      - table [ref=e55]:
+        - rowgroup [ref=e56]:
+          - row "# Listing Check-in Check-out Guests Beds" [ref=e57]:
+            - columnheader "#" [ref=e58]
+            - columnheader "Listing" [ref=e59]
+            - columnheader "Check-in" [ref=e60]
+            - columnheader "Check-out" [ref=e61]
+            - columnheader "Guests" [ref=e62]
+            - columnheader "Beds" [ref=e63]
+            - columnheader [ref=e64]
+        - rowgroup [ref=e65]:
+          - row "No bookings found." [ref=e66]:
+            - cell "No bookings found." [ref=e67]
+      - dialog [ref=e68]:
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - heading "New Booking" [level=2] [ref=e72]
+            - button "Close modal" [ref=e73] [cursor=pointer]:
+              - img [ref=e74]
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - generic [ref=e80]:
+                - generic [ref=e81]: Listing ID
+                - spinbutton [ref=e82]
+              - generic [ref=e83]:
+                - generic [ref=e84]:
+                  - generic [ref=e85]: Check-in
+                  - textbox [ref=e86]
+                - generic [ref=e87]:
+                  - generic [ref=e88]: Check-out
+                  - textbox [ref=e89]
+              - generic [ref=e90]:
+                - generic [ref=e91]:
+                  - generic [ref=e92]: Guests
+                  - spinbutton [ref=e93]
+                - generic [ref=e94]:
+                  - generic [ref=e95]: Beds
+                  - spinbutton [ref=e96]
+            - generic [ref=e97]:
+              - button "Cancel" [ref=e98] [cursor=pointer]
+              - button "Create Booking" [ref=e99] [cursor=pointer]
+```

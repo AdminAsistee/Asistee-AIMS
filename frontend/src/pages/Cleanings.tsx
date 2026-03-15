@@ -1,10 +1,177 @@
-﻿export default function Cleanings() {
+import { useState } from 'react';
+import { Plus, UserCheck, UserX } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { format, parseISO } from 'date-fns';
+import { useCleanings, useCreateCleaning, useAssignCleaner, useUnassignCleaner, useCleanerUsers } from '../hooks/useCleanings';
+import Modal from '../components/ui/Modal';
+import Badge from '../components/ui/Badge';
+import Pagination from '../components/ui/Pagination';
+import { useAuthStore } from '../stores/authStore';
+import type { Cleaning } from '../types';
+
+const cleaningSchema = z.object({
+  location_id: z.number({ coerce: true }).int().min(1, 'Location ID required'),
+  cleaning_date: z.string().min(1, 'Cleaning date required'),
+  cleaner_id: z.number({ coerce: true }).int().min(1).optional(),
+});
+type CleaningForm = z.infer<typeof cleaningSchema>;
+
+function AssignModal({ cleaning, open, onClose }: { cleaning: Cleaning | null; open: boolean; onClose: () => void }) {
+  const { data: cleaners } = useCleanerUsers();
+  const assign = useAssignCleaner();
+  const [cleanerId, setCleanerId] = useState<number | ''>('');
+
+  const handleAssign = async () => {
+    if (!cleaning || !cleanerId) return;
+    await assign.mutateAsync({ cleaningId: cleaning.id, cleanerId: cleanerId as number });
+    onClose();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Assign Cleaner — Cleaning #${cleaning?.id}`} maxWidth="max-w-sm">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Select Cleaner</label>
+          <select className="input w-full" value={cleanerId} onChange={e => setCleanerId(Number(e.target.value))}>
+            <option value="">— select —</option>
+            {cleaners?.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={handleAssign} disabled={!cleanerId || assign.isPending} className="btn-primary">
+            {assign.isPending ? 'Assigning…' : 'Assign'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export default function Cleanings() {
+  const [page, setPage] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [assignCleaning, setAssignCleaning] = useState<Cleaning | null>(null);
+  const [apiError, setApiError] = useState('');
+
+  const { data, isLoading } = useCleanings(page);
+  const create = useCreateCleaning();
+  const unassign = useUnassignCleaner();
+  const { user } = useAuthStore();
+  const isAdmin = user?.type === 'administrator' || user?.type === 'supervisor';
+
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<CleaningForm>({ resolver: zodResolver(cleaningSchema) });
+
+  const onSubmit = handleSubmit(async (values) => {
+    setApiError('');
+    try {
+      await create.mutateAsync(values);
+      reset();
+      setCreateOpen(false);
+    } catch (e: any) {
+      setApiError(e?.response?.data?.message ?? 'Failed to create cleaning.');
+    }
+  });
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Cleanings</h1>
-      <div className="card p-6">
-        <p className="text-gray-500">Cleanings module — coming soon.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Cleanings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} total cleanings</p>
+        </div>
+        {isAdmin && (
+          <button onClick={() => setCreateOpen(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={16} /> New Cleaning
+          </button>
+        )}
       </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50/70 border-b border-gray-100">
+                {['#', 'Date', 'Location', 'Cleaner', 'T/F Status', 'Next Booking', ''].map(h => (
+                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {isLoading && [...Array(5)].map((_, i) => (
+                <tr key={i}>{[...Array(7)].map((_, j) => (
+                  <td key={j} className="px-5 py-3"><div className="h-4 bg-gray-100 rounded animate-pulse" /></td>
+                ))}</tr>
+              ))}
+              {!isLoading && data?.data?.map(c => (
+                <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-3 text-gray-400 font-mono text-xs">{c.id}</td>
+                  <td className="px-5 py-3 font-medium text-gray-800">{format(parseISO(c.cleaning_date), 'MMM d, yyyy')}</td>
+                  <td className="px-5 py-3 text-gray-700">{c.location?.building_name ?? `#${c.location_id}`}</td>
+                  <td className="px-5 py-3 text-gray-700">{c.cleaner?.name ?? <span className="text-gray-400">Unassigned</span>}</td>
+                  <td className="px-5 py-3">
+                    <Badge variant={c.tf_status ? 'success' : 'default'}>{c.tf_status ? 'TF Day' : 'Normal'}</Badge>
+                  </td>
+                  <td className="px-5 py-3 text-gray-600">
+                    {c.next_booking && c.next_booking !== false
+                      ? format(parseISO(c.next_booking.checkin), 'MMM d')
+                      : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-5 py-3">
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 justify-end">
+                        <button onClick={() => setAssignCleaning(c)} title="Assign cleaner"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
+                          <UserCheck size={15} />
+                        </button>
+                        {c.cleaner_id && (
+                          <button onClick={() => unassign.mutateAsync(c.id)} title="Unassign cleaner"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                            <UserX size={15} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!isLoading && !data?.data?.length && (
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-400">No cleanings found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentPage={data?.current_page ?? 1} lastPage={data?.last_page ?? 1} from={data?.from} to={data?.to} total={data?.total} onPageChange={setPage} />
+      </div>
+
+      {/* Create Cleaning Modal */}
+      <Modal open={createOpen} onClose={() => { setCreateOpen(false); setApiError(''); }} title="New Cleaning">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Location ID</label>
+            <input {...register('location_id', { valueAsNumber: true })} type="number" min={1} className="input w-full" placeholder="e.g. 1" />
+            {errors.location_id && <p className="text-xs text-red-500 mt-1">{errors.location_id.message}</p>}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Cleaning Date</label>
+            <input {...register('cleaning_date')} type="date" className="input w-full" />
+            {errors.cleaning_date && <p className="text-xs text-red-500 mt-1">{errors.cleaning_date.message}</p>}
+          </div>
+          {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={() => setCreateOpen(false)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={create.isPending} className="btn-primary">
+              {create.isPending ? 'Saving…' : 'Create Cleaning'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <AssignModal cleaning={assignCleaning} open={!!assignCleaning} onClose={() => setAssignCleaning(null)} />
     </div>
   );
 }

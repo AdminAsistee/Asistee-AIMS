@@ -1,0 +1,87 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Locations" [level=1] [ref=e49]
+          - paragraph [ref=e50]: 0 registered properties
+        - button "New Location" [active] [ref=e51] [cursor=pointer]:
+          - img [ref=e52]
+          - text: New Location
+      - generic [ref=e54]: No locations found.
+      - dialog [ref=e55]:
+        - generic [ref=e57]:
+          - generic [ref=e58]:
+            - heading "New Location" [level=2] [ref=e59]
+            - button "Close modal" [ref=e60] [cursor=pointer]:
+              - img [ref=e61]
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - generic [ref=e68]: Building Name
+                - textbox "e.g. Sakura Residence" [ref=e69]
+              - generic [ref=e70]:
+                - generic [ref=e71]: Room Number
+                - spinbutton [ref=e72]
+              - generic [ref=e73]:
+                - generic [ref=e74]: Owner ID
+                - spinbutton [ref=e75]
+              - generic [ref=e76]:
+                - generic [ref=e77]: Address
+                - textbox "Full address" [ref=e78]
+              - generic [ref=e79]:
+                - generic [ref=e80]: Latitude
+                - spinbutton [ref=e81]
+              - generic [ref=e82]:
+                - generic [ref=e83]: Longitude
+                - spinbutton [ref=e84]
+              - generic [ref=e85]:
+                - generic [ref=e86]: Google Maps Link
+                - textbox "https://maps.google.com/..." [ref=e87]
+              - generic [ref=e88]:
+                - generic [ref=e89]: Entry Info
+                - textbox "Key box code, door access instructions..." [ref=e90]
+            - generic [ref=e91]:
+              - button "Cancel" [ref=e92] [cursor=pointer]
+              - button "Create Location" [ref=e93] [cursor=pointer]
+```

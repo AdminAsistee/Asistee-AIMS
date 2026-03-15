@@ -1,0 +1,99 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [active] [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e48]:
+        - heading "Users" [level=1] [ref=e49]
+        - paragraph [ref=e50]: 2 registered users
+      - table [ref=e53]:
+        - rowgroup [ref=e54]:
+          - row "# Name Email Role Joined" [ref=e55]:
+            - columnheader "#" [ref=e56]
+            - columnheader "Name" [ref=e57]
+            - columnheader "Email" [ref=e58]
+            - columnheader "Role" [ref=e59]
+            - columnheader "Joined" [ref=e60]
+            - columnheader [ref=e61]
+        - rowgroup [ref=e62]:
+          - row "1 T Tech Admin tech@asistee.com administrator Mar 14, 2026" [ref=e63]:
+            - cell "1" [ref=e64]
+            - cell "T Tech Admin" [ref=e65]:
+              - generic [ref=e66]:
+                - generic [ref=e67]: T
+                - generic [ref=e68]: Tech Admin
+            - cell "tech@asistee.com" [ref=e69]
+            - cell "administrator" [ref=e70]:
+              - combobox [ref=e72]:
+                - option "administrator" [selected]
+                - option "client"
+                - option "supervisor"
+                - option "cleaner"
+                - option "guest"
+                - option "messenger"
+                - option "accountant"
+                - option "banned"
+            - cell "Mar 14, 2026" [ref=e73]
+            - cell [ref=e74]:
+              - button [ref=e75] [cursor=pointer]:
+                - img [ref=e76]
+          - row "2 A Alexa Client alexa@asistee.com client Mar 14, 2026" [ref=e79]:
+            - cell "2" [ref=e80]
+            - cell "A Alexa Client" [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]: A
+                - generic [ref=e84]: Alexa Client
+            - cell "alexa@asistee.com" [ref=e85]
+            - cell "client" [ref=e86]:
+              - combobox [ref=e88]:
+                - option "administrator"
+                - option "client" [selected]
+                - option "supervisor"
+                - option "cleaner"
+                - option "guest"
+                - option "messenger"
+                - option "accountant"
+                - option "banned"
+            - cell "Mar 14, 2026" [ref=e89]
+            - cell [ref=e90]:
+              - button [ref=e91] [cursor=pointer]:
+                - img [ref=e92]
+```

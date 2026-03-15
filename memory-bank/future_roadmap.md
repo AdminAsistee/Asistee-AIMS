@@ -6,23 +6,16 @@
 - [x] **Phase 1A: Backend Upgrade** — Laravel 5.5/PHP 7.4 → Laravel 12/PHP 8.3 + Sanctum
 - [x] **Phase 1B: Frontend Upgrade** — React 16/CRA → React 18/Vite 5/TypeScript
 - [x] **Phase 2: API Connection** — 70 routes registered, CORS configured, browser login working end-to-end
+- [x] **Phase 3: Module Pages** — Dashboard KPIs, Bookings, Cleanings, Locations, Supplies, Users, Profile all functional
 
 ---
 
 ## In Progress 🔨
-- [ ] **Phase 3: Module Pages** — Build out Bookings, Cleanings, Locations, Supplies, Users, Profile in new React frontend
+- [ ] **Phase 4: Gen 2 Feature Integration** — iCal sync, Channel Manager, Extra Services, Pricing Engine
 
 ---
 
 ## Planned 📋
-
-### Phase 3: Gen 3 Module Pages (Priority Order)
-1. **Bookings** — List, create, edit, delete (most critical module)
-2. **Cleanings** — Calendar view + table, assign/unassign cleaner
-3. **Locations** — CRUD + photo upload, listings management
-4. **Supplies** — Inventory management + transactions
-5. **Users** — Admin-only user management table
-6. **Profile** — Edit profile, change password, Stripe card
 
 ### Phase 4: Gen 2 Feature Integration
 - [ ] **iCal sync** — Connect `johngrogg/ics-parser` backend to a UI for importing Airbnb/VRBO bookings

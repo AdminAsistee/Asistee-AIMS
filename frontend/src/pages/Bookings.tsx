@@ -1,10 +1,213 @@
-﻿export default function Bookings() {
+import { useState } from 'react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { format, parseISO } from 'date-fns';
+import { useBookings, useCreateBooking, useUpdateBooking, useDeleteBooking } from '../hooks/useBookings';
+import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
+import Pagination from '../components/ui/Pagination';
+import type { Booking } from '../types';
+
+const bookingSchema = z.object({
+  listing_id: z.number({ coerce: true }).int().min(1, 'Listing ID required'),
+  checkin: z.string().min(1, 'Check-in required'),
+  checkout: z.string().min(1, 'Check-out required'),
+  guests: z.number({ coerce: true }).int().min(1).max(1000),
+  beds: z.number({ coerce: true }).int().min(0).optional(),
+});
+type BookingForm = z.infer<typeof bookingSchema>;
+
+function BookingFormFields({ register, errors }: { register: any; errors: any }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Listing ID</label>
+        <input {...register('listing_id', { valueAsNumber: true })} type="number" min={1}
+          className="input w-full" placeholder="e.g. 1" />
+        {errors.listing_id && <p className="text-xs text-red-500 mt-1">{errors.listing_id.message}</p>}
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+          <input {...register('checkin')} type="date" className="input w-full" />
+          {errors.checkin && <p className="text-xs text-red-500 mt-1">{errors.checkin.message}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+          <input {...register('checkout')} type="date" className="input w-full" />
+          {errors.checkout && <p className="text-xs text-red-500 mt-1">{errors.checkout.message}</p>}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
+          <input {...register('guests', { valueAsNumber: true })} type="number" min={1} className="input w-full" />
+          {errors.guests && <p className="text-xs text-red-500 mt-1">{errors.guests.message}</p>}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
+          <input {...register('beds', { valueAsNumber: true })} type="number" min={0} className="input w-full" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Bookings() {
+  const [page, setPage] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editBooking, setEditBooking] = useState<Booking | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [apiError, setApiError] = useState('');
+
+  const { data, isLoading } = useBookings(page);
+  const createMutation = useCreateBooking();
+  const updateMutation = useUpdateBooking();
+  const deleteMutation = useDeleteBooking();
+
+  const createForm = useForm<BookingForm>({ resolver: zodResolver(bookingSchema) });
+  const editForm   = useForm<BookingForm>({ resolver: zodResolver(bookingSchema) });
+
+  const openEdit = (b: Booking) => {
+    setEditBooking(b);
+    editForm.reset({
+      listing_id: b.listing_id,
+      checkin: b.checkin.slice(0, 10),
+      checkout: b.checkout.slice(0, 10),
+      guests: b.guests,
+      beds: b.beds,
+    });
+  };
+
+  const handleCreate = createForm.handleSubmit(async (values) => {
+    setApiError('');
+    try {
+      await createMutation.mutateAsync(values);
+      createForm.reset();
+      setCreateOpen(false);
+    } catch (e: any) {
+      setApiError(e?.response?.data?.message ?? 'Failed to create booking.');
+    }
+  });
+
+  const handleEdit = editForm.handleSubmit(async (values) => {
+    if (!editBooking) return;
+    setApiError('');
+    try {
+      await updateMutation.mutateAsync({ id: editBooking.id, ...values });
+      setEditBooking(null);
+    } catch (e: any) {
+      setApiError(e?.response?.data?.message ?? 'Failed to update booking.');
+    }
+  });
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    await deleteMutation.mutateAsync(deleteId);
+    setDeleteId(null);
+  };
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Bookings</h1>
-      <div className="card p-6">
-        <p className="text-gray-500">Bookings module — coming soon.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Bookings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{data?.total ?? 0} total bookings</p>
+        </div>
+        <button onClick={() => setCreateOpen(true)} className="btn-primary flex items-center gap-2">
+          <Plus size={16} /> New Booking
+        </button>
       </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50/70 border-b border-gray-100">
+                {['#', 'Listing', 'Check-in', 'Check-out', 'Guests', 'Beds', ''].map(h => (
+                  <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {isLoading && (
+                [...Array(5)].map((_, i) => (
+                  <tr key={i}>
+                    {[...Array(7)].map((_, j) => (
+                      <td key={j} className="px-5 py-3">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+              {!isLoading && data?.data?.map(b => (
+                <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="px-5 py-3 text-gray-400 font-mono text-xs">{b.id}</td>
+                  <td className="px-5 py-3 text-gray-700 font-medium">#{b.listing_id}</td>
+                  <td className="px-5 py-3 text-gray-700">{format(parseISO(b.checkin), 'MMM d, yyyy')}</td>
+                  <td className="px-5 py-3 text-gray-700">{format(parseISO(b.checkout), 'MMM d, yyyy')}</td>
+                  <td className="px-5 py-3 text-gray-700">{b.guests}</td>
+                  <td className="px-5 py-3 text-gray-700">{b.beds}</td>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => openEdit(b)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                        <Pencil size={15} />
+                      </button>
+                      <button onClick={() => setDeleteId(b.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!isLoading && !data?.data?.length && (
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-400">No bookings found.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pagination currentPage={data?.current_page ?? 1} lastPage={data?.last_page ?? 1} from={data?.from} to={data?.to} total={data?.total} onPageChange={setPage} />
+      </div>
+
+      {/* Create Modal */}
+      <Modal open={createOpen} onClose={() => { setCreateOpen(false); setApiError(''); }} title="New Booking">
+        <form onSubmit={handleCreate} className="space-y-5">
+          <BookingFormFields register={createForm.register} errors={createForm.formState.errors} />
+          {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={() => setCreateOpen(false)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={createMutation.isPending} className="btn-primary">
+              {createMutation.isPending ? 'Saving…' : 'Create Booking'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal open={!!editBooking} onClose={() => { setEditBooking(null); setApiError(''); }} title={`Edit Booking #${editBooking?.id}`}>
+        <form onSubmit={handleEdit} className="space-y-5">
+          <BookingFormFields register={editForm.register} errors={editForm.formState.errors} />
+          {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
+          <div className="flex justify-end gap-3 pt-1">
+            <button type="button" onClick={() => setEditBooking(null)} className="btn-secondary">Cancel</button>
+            <button type="submit" disabled={updateMutation.isPending} className="btn-primary">
+              {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="Delete Booking"
+        message={`Delete booking #${deleteId}? This cannot be undone.`}
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

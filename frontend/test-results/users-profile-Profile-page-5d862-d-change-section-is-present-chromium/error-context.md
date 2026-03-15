@@ -1,0 +1,83 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [active] [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - heading "My Profile" [level=1] [ref=e47]
+      - generic [ref=e48]:
+        - generic [ref=e49]: TA
+        - generic [ref=e50]:
+          - heading "Tech Admin" [level=2] [ref=e51]
+          - paragraph [ref=e52]: tech@asistee.com
+          - generic [ref=e53]: administrator
+      - generic [ref=e54]:
+        - heading "Edit Profile" [level=3] [ref=e55]
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: Full Name
+              - textbox [ref=e60]: Tech Admin
+            - generic [ref=e61]:
+              - generic [ref=e62]: Email
+              - textbox [ref=e63]: tech@asistee.com
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]: Phone
+              - textbox "+81 90-0000-0000" [ref=e67]
+            - generic [ref=e68]:
+              - generic [ref=e69]: Address
+              - textbox [ref=e70]
+          - generic [ref=e71]:
+            - generic [ref=e72]: Bio
+            - textbox "A short bio about yourself..." [ref=e73]
+          - button "Save Profile" [ref=e75] [cursor=pointer]
+      - generic [ref=e76]:
+        - heading "Change Password" [level=3] [ref=e77]
+        - generic [ref=e78]:
+          - generic [ref=e79]:
+            - generic [ref=e80]:
+              - generic [ref=e81]: New Password
+              - textbox "Min 6 characters" [ref=e82]
+            - generic [ref=e83]:
+              - generic [ref=e84]: Confirm Password
+              - textbox [ref=e85]
+          - button "Update Password" [ref=e87] [cursor=pointer]
+```

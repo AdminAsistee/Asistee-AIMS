@@ -1,0 +1,64 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Asistee AIMS" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Tech Admin
+      - generic [ref=e8]: administrator
+    - navigation [ref=e9]:
+      - link "Dashboard" [ref=e10] [cursor=pointer]:
+        - /url: /
+        - img [ref=e11]
+        - text: Dashboard
+      - link "Bookings" [ref=e14] [cursor=pointer]:
+        - /url: /bookings
+        - img [ref=e15]
+        - text: Bookings
+      - link "Cleanings" [active] [ref=e18] [cursor=pointer]:
+        - /url: /cleanings
+        - img [ref=e19]
+        - text: Cleanings
+      - link "Locations" [ref=e21] [cursor=pointer]:
+        - /url: /locations
+        - img [ref=e22]
+        - text: Locations
+      - link "Supplies" [ref=e25] [cursor=pointer]:
+        - /url: /supplies
+        - img [ref=e26]
+        - text: Supplies
+      - link "Users" [ref=e30] [cursor=pointer]:
+        - /url: /users
+        - img [ref=e31]
+        - text: Users
+      - link "Profile" [ref=e36] [cursor=pointer]:
+        - /url: /profile
+        - img [ref=e37]
+        - text: Profile
+    - button "Sign out" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+      - text: Sign out
+  - main [ref=e45]:
+    - generic [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - heading "Cleanings" [level=1] [ref=e49]
+          - paragraph [ref=e50]: 0 total cleanings
+        - button "New Cleaning" [ref=e51] [cursor=pointer]:
+          - img [ref=e52]
+          - text: New Cleaning
+      - table [ref=e55]:
+        - rowgroup [ref=e56]:
+          - row "# Date Location Cleaner T/F Status Next Booking" [ref=e57]:
+            - columnheader "#" [ref=e58]
+            - columnheader "Date" [ref=e59]
+            - columnheader "Location" [ref=e60]
+            - columnheader "Cleaner" [ref=e61]
+            - columnheader "T/F Status" [ref=e62]
+            - columnheader "Next Booking" [ref=e63]
+            - columnheader [ref=e64]
+        - rowgroup [ref=e65]:
+          - row "No cleanings found." [ref=e66]:
+            - cell "No cleanings found." [ref=e67]
+```
