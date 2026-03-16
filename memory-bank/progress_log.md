@@ -147,3 +147,18 @@
 - Channel Accounts accessible from: Location detail drawer AND global Settings page.
 - iCal URL stored per listing; "Sync Now" button calls `ChannelController::pullCleanings()` (`johngrogg/ics-parser` already installed).
 - **Files affected**: `memory-bank/future_roadmap.md`, `memory-bank/active_context.md`, `memory-bank/progress_log.md`.
+
+---
+
+## 2026-03-16 14:39 (JST) — Phase 4A Browser Testing + Bug Fixes + Commit `6b6183f`
+- **Browser tested** all 5 Quick Wins — all confirmed working after fixes below.
+- **Bug: email conflict on re-register** — `UserController::delete()` changed to `forceDelete()`; stale soft-deleted record removed from DB directly.
+- **Bug: `channel_listing_id` DB error** — `LocationController::create()` now sets `channel_listing_id = 'manual-{id}'` and `status = 'active'` on listing creation.
+- **Bug: `listing_title` not saved** — Added `listing_title`, `channel_listing_id`, `status` to `Listing::$fillable`.
+- **New: Location delete** — `LocationController::delete()` added with booking guard; `DELETE /locations/{id}` route; delete button in Location drawer (admin only).
+- **Bug: optional select fields required** — `cleaner_id` and `guest_id` changed to `z.string().optional()` in schemas; `valueAsNumber` removed from those selects; values sanitized manually in submit handlers.
+- **Bug: Zod v4 coerce syntax** — `z.number({coerce:true})` replaced with `z.number()` + `valueAsNumber` across `Bookings.tsx`, `Cleanings.tsx`, `Locations.tsx`.
+- **Bug: Assign Me no UI update** — all cleaning mutations changed from `invalidateQueries` to `refetchQueries` for immediate cache refresh.
+- **Git commit**: `6b6183f` — `feat: Phase 4A - quick wins + bug fixes` — pushed to `origin/main`.
+- **Files affected**: `backend/app/Http/Controllers/UserController.php`, `backend/app/Http/Controllers/LocationController.php`, `backend/app/Listing.php`, `backend/routes/api.php`, `frontend/src/pages/Users.tsx`, `frontend/src/pages/Bookings.tsx`, `frontend/src/pages/Cleanings.tsx`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/pages/Locations.tsx`, `frontend/src/hooks/useCleanings.ts`, `frontend/src/hooks/useLocations.ts`, `frontend/src/hooks/useUsers.ts`, `frontend/src/hooks/useClientOptions.ts`.
+
