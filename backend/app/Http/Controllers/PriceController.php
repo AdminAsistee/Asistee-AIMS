@@ -37,6 +37,32 @@ class PriceController extends Controller
 
 
 
+	public function index() {
+		return response( Price::orderBy('id', 'desc')->get(), 200 );
+	}
+
+	public function update( Price $price, Request $request ) {
+		$user = \Auth::user();
+		if ( ! in_array( $user->type, [ 'administrator', 'supervisor' ] ) ) {
+			return $this->AuthorizationFailureResponse( 'update', 'Price' );
+		}
+		$fields = $request->only( $this->updateable['administrator'] );
+		if ( $this->validationFails( $fields, $this->validationRulesForUpdate ) ) {
+			return $this->validationResponse;
+		}
+		$price->update( $fields );
+		return response( $price->fresh(), 200 );
+	}
+
+	public function delete( Price $price ) {
+		$user = \Auth::user();
+		if ( ! in_array( $user->type, [ 'administrator', 'supervisor' ] ) ) {
+			return $this->AuthorizationFailureResponse( 'delete', 'Price' );
+		}
+		$price->delete();
+		return response( [ 'message' => 'Price deleted.' ], 200 );
+	}
+
 	public function create(Request $request){
 		// return $this->creationFailureResponse( 'Price', 'CREATE DEATH_INATOR_INATOR' );
 		if ( $this->validationFails( $request->all(), $this->validationRulesForCreation ) ) {

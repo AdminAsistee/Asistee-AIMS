@@ -162,3 +162,162 @@
 - **Git commit**: `6b6183f` — `feat: Phase 4A - quick wins + bug fixes` — pushed to `origin/main`.
 - **Files affected**: `backend/app/Http/Controllers/UserController.php`, `backend/app/Http/Controllers/LocationController.php`, `backend/app/Listing.php`, `backend/routes/api.php`, `frontend/src/pages/Users.tsx`, `frontend/src/pages/Bookings.tsx`, `frontend/src/pages/Cleanings.tsx`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/pages/Locations.tsx`, `frontend/src/hooks/useCleanings.ts`, `frontend/src/hooks/useLocations.ts`, `frontend/src/hooks/useUsers.ts`, `frontend/src/hooks/useClientOptions.ts`.
 
+---
+
+## 2026-03-16 15:39 (JST) — Phase 4 Medium Effort + Gen 2 Source Audit
+
+### Phase 4 Medium Effort — Core Implementation (all complete except 2 items)
+- **`BookingDetail` page** (`/bookings/:id`) — Inline editing (checkin/checkout dates, planned times, guests, beds), guest info panel, property panel with entry info + map link, linked cleaning card with "View Cleaning →" link.
+- **`CleaningDetail` page** (`/cleanings/:id`) — Assign/unassign cleaner (admin), Assign Me (cleaner), status + start/end time editing, location info + property photos, next booking panel, supply request workflow (select item + qty → Request → Fulfill → Deliver).
+- **`PasswordResetRequest` page** (`/forgot-password`) — Email form → calls `POST /api/v1/request-password-reset`. Shows success state without revealing whether email exists.
+- **`PasswordResetForm` page** (`/reset-password?token=`) — New password + confirm → calls `POST /api/v1/reset-password` → on success redirects to `/login?reset=1`.
+- **`Pricing` page** (`/pricing`, admin only) — Create flat fee or percentage-based price structures. Toggle switch for percentage mode. Shows session-created prices list.
+- **Bookings + Cleanings rows** — Now clickable (cursor-pointer), navigate to `/bookings/:id` and `/cleanings/:id`. Action buttons (Edit/Delete/Assign) use `e.stopPropagation()` to prevent row-click conflict.
+- **Sidebar** — Added "Pricing" (DollarSign icon, adminOnly) between Users and Profile.
+- **App.tsx** — Fully rewrote to add all new routes: `bookings/:id`, `cleanings/:id`, `pricing`, `forgot-password`, `reset-password`. Removed old duplicate content from a replace collision.
+- **Types extended**: `Booking` (guest_id, guest, confirmation_code, planned times, status), `Listing` (listing_title, channel_listing_id, status, channel_account_id), `Cleaning` (supplies array), plus new `SupplyTransaction`, `Price`, `ChannelAccount` interfaces.
+- **New hooks**: `useBookingDetail.ts`, `useCleaningDetail.ts`, `useSupplyTransactions.ts` (list/create/fulfill/deliver), `usePrices.ts` (create/show).
+- **Bug fixed**: `guest_id` type mismatch in `Bookings.tsx::handleEdit()` — now sanitizes string→number same as `handleCreate`.
+- **Files created**: `frontend/src/pages/BookingDetail.tsx`, `CleaningDetail.tsx`, `PasswordResetRequest.tsx`, `PasswordResetForm.tsx`, `Pricing.tsx`, `frontend/src/hooks/useBookingDetail.ts`, `useCleaningDetail.ts`, `useSupplyTransactions.ts`, `usePrices.ts`.
+- **Files modified**: `frontend/src/App.tsx`, `frontend/src/components/Layout.tsx`, `frontend/src/pages/Bookings.tsx`, `frontend/src/pages/Cleanings.tsx`, `frontend/src/types/index.ts`.
+
+### Gen 2 Source Code Audit — Newly Discovered Gaps
+- **Directly inspected**: `frontend-legacy/src/containers/modules/Cleaning/Calendar.js`, `Location/Calendar.js`, `CleaningSingle.js`, `Supply/SupplySingle.js`, `Profile/PaymentCard.js`; `backend-legacy/app/Http/Controllers/SuppliesTransactionController.php`, `PriceController.php`.
+- **Cleaning Calendar** (`/cleaning-calendar`) — `react-big-calendar` monthly view with cleaner filter dropdown. Backend supports `?thisMonth=&cleaner_id=` query. **High priority — core daily tool for cleaners + admins.**
+- **Location Calendar** — Bookings (checkin→checkout span) + Cleanings (single day) overlaid on same monthly calendar inside Location drawer. Click event navigates to detail.
+- **Location schema gaps** — `mail_rules` and `trash_rules` text fields displayed in Gen 2's `CleaningSingle.js`. Not in current Gen 3 schema or UI.
+- **Stripe Payment on Profile** — Full Stripe card save/change flow using `react-stripe-elements`. Low priority, defer until post-launch (requires Stripe account).
+- **`SuppliesTransactionController` confirmed** — Gen 2's fulfill/deliver use `status` string field (`not_fulfilled` → `staged` → `delivered`). Gen 3 backend uses `fulfilled_at`/`delivered_at` timestamps instead — API contract differs; `useSupplyTransactions` hooks use PUT endpoints for fulfill/deliver which is correct.
+- **All newly discovered gaps added to `future_roadmap.md`** under `🟠 Newly Discovered Gen 2 Gaps`.
+
+---
+
+## 2026-03-16 15:54 (JST) — Stripe Payment Deferred Decision
+- **Decision**: Stripe Payment on Profile deliberately deferred to post-launch.
+- **Reason**: Requires a live Stripe account, `card_last_four`/`card_brand`/`stripe_customer_id` DB migration, and backend Stripe token handling. Not an operational blocker.
+- **Action**: Removed from Phase 4 roadmap. Moved to `Ideas / Backlog` section in `future_roadmap.md` and `active_context.md`.
+---
+
+## 2026-03-16 16:30 (JST) — Phase 4 Medium — Remaining 2 Items Completed
+
+- **Location drawer: Listings tab** — 3-tab drawer (Info / Photos / Listings). Listings tab shows OTA/channel badge, status pill, `channel_listing_id`, booking count, and placeholder "Connect OTA" / "Sync Now" / "Add iCal URL" buttons (alert noting Phase 4 Large Effort). Location cards on the grid show listing count inline.
+- **Supply transaction drawer** — Clicking any supply item card opens a slide-out drawer with stock summary bars and a scrollable transaction log. Log entries show type badge (Request/Buy/Use), quantity, date, and fulfill/deliver status chips. Admin action buttons: "Mark Fulfilled" + "Mark Delivered". Buy/Use buttons use `stopPropagation` to prevent drawer trigger.
+- **`useSupplyTransactions.ts`** — Extended to accept optional `supplyId` parameter for per-supply filtering; `queryKey` updated; `enabled` condition added.
+- **Files affected**: `frontend/src/pages/Locations.tsx`, `frontend/src/pages/Supplies.tsx`, `frontend/src/hooks/useSupplyTransactions.ts`.
+
+---
+
+## 2026-03-16 16:50 (JST) — All Newly Discovered Gen 2 Gaps Implemented
+
+### Group 1 — Cleaning Calendar
+- **`CleaningCalendar.tsx`** — New page at `/cleaning-calendar`. Native monthly calendar grid (date-fns, no external calendar library). Color-coded by status (Pending/In Progress/Completed/Cancelled). Admin-only cleaner filter dropdown. Click chip → `/cleanings/:id`. TF Day marker 🔄.
+- **App.tsx** — Added `/cleaning-calendar` route.
+- **Layout.tsx** — Added "Calendar" (CalendarDays icon) nav link; visible to admin + cleaner, hidden from other roles.
+
+### Group 2 — Location Schema Fields
+- **Key finding**: All columns (`mail_rules`, `trash_rules`, `per_bed_charge`, `per_guest_charge`, `SplitRate`, `guest_photo_directions_link`, `max_beds`) already exist in the original Gen 2 DB migration — no new migration needed.
+- **`Location.php $fillable`** — Added all 9 missing fields: `mail_rules`, `trash_rules`, `guest_photo_directions_link`, `max_beds`, `per_bed_charge`, `per_guest_charge`, `SplitRate`, `default_staff_cleaning_payout`, `default_client_charge`.
+- **`LocationController.php`** — Added optional validation rules for all new fields (`nullable|string`, `nullable|numeric`, `nullable|url`).
+- **`types/index.ts`** — Extended `Location` interface with all Gen 2 fields.
+- **`Locations.tsx` Info tab** — Now displays Mail Rules (blue card 📬), Trash Rules (green card 🗑️), Photo Directions link (purple 📷), and Max Beds.
+- **`CleaningDetail.tsx` location panel** — Added Mail Rules, Trash Rules, and Photo Directions link alongside existing Map link and photos.
+
+### Group 3 — BookingDetail Small Fixes
+- **`BookingDetail.tsx`** — Added admin-only Status dropdown in edit mode: `pending`, `confirmed`, `checked_in`, `checked_out`, `cancelled`. Status saved as part of existing `useUpdateBookingDetail` mutation.
+- **`previous_cleaning`** — Was already implemented in Phase 4 Medium; confirmed no further work needed.
+- **Files affected**: `backend/app/Location.php`, `backend/app/Http/Controllers/LocationController.php`, `frontend/src/types/index.ts`, `frontend/src/pages/Locations.tsx`, `frontend/src/pages/CleaningDetail.tsx`, `frontend/src/pages/BookingDetail.tsx`, `frontend/src/pages/CleaningCalendar.tsx` (new), `frontend/src/App.tsx`, `frontend/src/components/Layout.tsx`.
+
+---
+
+## 2026-03-16 17:00 (JST) — Location Calendar Tab
+
+- **`Locations.tsx` — Calendar tab** — Added 4th tab "Calendar" to the Location drawer. Built with date-fns; no external library needed.
+- **Booking spans** — All bookings from all listings for a location are shown as blue bars spanning checkin → checkout days. Click navigates to `/bookings/:id`.
+- **Cleaning markers** — All cleanings for the location appear as teal 🧹 markers on the exact cleaning date. TF Day cleanings show 🔄. Click navigates to `/cleanings/:id`.
+- **Data source** — Reuses existing `GET /locations/:id` response which already loads `cleanings.cleaner` + `listings.bookings` — no new API call or route needed.
+- **Month navigation** — `‹ Month YYYY ›` prev/next arrows. Legend + total booking/cleaning counts shown at bottom.
+- **Files affected**: `frontend/src/pages/Locations.tsx`.
+
+---
+
+## 2026-03-16 20:00 (JST) — Location Editing, Photo Upload Fix & Backend Restart
+
+### Location Inline Editing
+- Added `✏️ Edit Info` button to Location drawer Info tab (admin/supervisor only).
+- Edit mode shows all fields as inputs: Building Name, Room #, Max Beds, Address, Map Link, Entry Info, Mail Rules, Trash Rules, Photo Directions Link.
+- After Save, the API response updates the `selected` state directly — **no page reload needed**.
+- **New hook**: `useUpdateLocation` in `frontend/src/hooks/useLocations.ts` for `PUT /api/v1/locations/:id`.
+- **New route**: `PUT /api/v1/locations/{location}` in `backend/routes/api.php`.
+- **New method**: `update()` in `backend/app/Http/Controllers/LocationController.php`.
+
+### Photo Upload Fix
+- **Root cause**: `uploadPhoto()` used `Image::make()` from Intervention Image which is not installed, causing crashes.
+- **Fix**: Removed Intervention Image dependency. Photos now saved to `backend/public/uploads/photos/{id}/` directly — no `storage:link` symlink needed.
+- Stored path is `/uploads/photos/{id}/{filename}` — served directly by the web server.
+- Frontend `<img src>` now uses `p.full_path` directly instead of `/storage/...` prefix.
+
+### Immediate UI Refresh Fix
+- **Root cause**: `selected` in parent was a frozen snapshot — mutations refetched the list but never updated the drawer.
+- **Fix**: Added `onUpdate: (loc: Location) => void` callback to `LocationDrawer`. After every mutation (upload, edit save), the fresh API response is passed to `setSelected()` immediately.
+
+### Backend Server Clarification
+- Discovered two codebases: **legacy** (`asistee_aims/AIMSCoreBE` — PHP 7.4, Laravel 5.5) and **new** (`Asistee-AIMS/backend` — PHP 8.3, Laravel 12).
+- New backend runs via: `C:\Users\amrca\Documents\php83\php.exe artisan serve --port=8001`
+- Accidentally killed backend process during restart investigation; restored with correct PHP binary.
+- Legacy system (`AIMSCoreBE`) was accidentally modified then fully reverted.
+
+### Files affected
+- `frontend/src/pages/Locations.tsx`
+- `frontend/src/hooks/useLocations.ts`
+- `backend/app/Http/Controllers/LocationController.php`
+- `backend/routes/api.php`
+
+---
+
+## 2026-03-16 23:34 (JST) — Phase 4 Photo, Calendar & Pricing Fixes
+
+### Photo Upload & Display
+- **Root cause (403 error)**: `PropertyPhoto.php` Eloquent accessors `getFullPathAttribute`/`getThumbPathAttribute` were prepending `/storage/` to all paths — fixed by removing them.
+- **Created** `src/lib/photoUrl.ts` — shared `getPhotoUrl()` utility strips legacy `/storage/` prefix and prepends backend origin. Both `Locations.tsx` and `CleaningDetail.tsx` now use it.
+- **Local import removed** from `Locations.tsx`; shared util imported instead.
+- **`useLocationDetail` hook** added — fetches full location data (photos + bookings) when a Location drawer opens. `Locations.tsx` refactored to use `selectedId` state + this hook; loading spinner added.
+
+### Photo Delete + Lightbox
+- **Delete icon**: Hover any photo thumbnail in Location drawer → red trash icon appears (top-right). Admin/supervisor only. `useDeletePhoto` hook added (`DELETE /api/v1/locations-photo/{photo}`).
+- **Cross-module cache invalidation**: `useDeletePhoto.onSuccess` now invalidates both `['locations']` AND `['cleaning']` / `['cleanings']` — so CleaningDetail refreshes without a hard reload.
+- **Lightbox modal**: Click any photo thumbnail → fullscreen lightbox overlay. X to close, click outside to close.
+- **CleaningDetail lightbox**: Upgraded to index-based navigation (prev/next `ChevronLeft`/`ChevronRight` Lucide icons) with photo counter (`1 / N`). Grid shows 4 photos; all are browsable via arrows.
+
+### CleaningDetail Photo Fix
+- **Root cause**: Photo `src` used `/storage/${p.thumb_path?.replace('public/', '')}` — hardcoded old format.
+- **Fix**: Replaced with `getPhotoUrl(p.full_path ?? p.thumb_path)` from shared utility.
+
+### Location Calendar — TF Day Fix
+- **Root cause**: `tf_status` is a virtual attribute computed by `CleaningController` — NOT stored in DB. `LocationController::show()` returned raw cleanings with no `tf_status`, so the calendar always saw `undefined`.
+- **Fix**: Added TF computation loop to `LocationController::show()`: iterates all bookings for the location and marks cleanings whose date matches a booking checkin as `tf_status = true`.
+- **Added** `use Carbon\Carbon` to `LocationController`.
+
+### Cleaning Calendar — thisMonth Bug Fix
+- **Root cause**: Frontend was sending `?thisMonth=1` (literal `1`). Backend `CleaningFilter::thisMonth()` does `Carbon::parse('1')` → parsed as **January 1st** of the current year → zero results for any other month.
+- **Fix**: Now sends actual `YYYY-MM` string (e.g. `2026-03`). Renamed `per_page` → `perPage` to match filter method; raised limit to 200.
+
+### Pricing Full CRUD
+- **Root cause**: No `GET /prices` route existed — Pricing page only tracked session-local state.
+- **Added** `PriceController::index()` + `GET /api/v1/prices` route.
+- **Added** `PriceController::update()` + `PUT /api/v1/prices/{price}` route.
+- **Added** `PriceController::delete()` (soft-delete) + `DELETE /api/v1/prices/{price}` route.
+- **Added** `useListPrices`, `useUpdatePrice`, `useDeletePrice` hooks to `usePrices.ts`.
+- **`Pricing.tsx`** rebuilt: fetches all prices from DB, shows persistent list. Each row has hover-reveal ✏️ (inline edit) and 🗑️ (delete with confirm) buttons.
+
+### Files affected
+- `backend/app/PropertyPhoto.php` — removed bad accessors
+- `backend/app/Http/Controllers/LocationController.php` — TF status computation + Carbon import + update() + uploadPhoto fix
+- `backend/app/Http/Controllers/PriceController.php` — index() + update() + delete()
+- `backend/routes/api.php` — PUT+DELETE prices, GET prices routes
+- `frontend/src/lib/photoUrl.ts` — new shared utility
+- `frontend/src/hooks/useLocations.ts` — useLocationDetail + useDeletePhoto (with cross-module invalidation) + useUpdateLocation
+- `frontend/src/hooks/usePrices.ts` — useListPrices + useUpdatePrice + useDeletePrice
+- `frontend/src/pages/Locations.tsx` — selectedId state, lightbox, delete button, shared photoUrl
+- `frontend/src/pages/CleaningDetail.tsx` — photoUrl fix, lightbox with prev/next navigation, 4-photo grid cap restored
+- `frontend/src/pages/CleaningCalendar.tsx` — thisMonth param fix (YYYY-MM), perPage rename
+- `frontend/src/pages/Pricing.tsx` — full CRUD: list from DB, inline edit, delete

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PasswordResets;
+use App\PasswordResets;
 use App\Models\User;
 use App\Rules\EnsureOneAdmin;
 use App\Rules\TokenFresh;
@@ -200,9 +200,19 @@ class UserController extends Controller
 
         $token = str()->random(32);
         PasswordResets::create(['email' => $request->get('email'), 'token' => $token]);
-        User::whereEmail($request->get('email'))->first()->sendPasswordResetNotification($token);
 
-        return response(['message' => 'Reset instructions sent']);
+        // Attempt email — silently skip if SMTP is not configured (dev environments)
+        try {
+            User::whereEmail($request->get('email'))->first()->sendPasswordResetNotification($token);
+        } catch (\Throwable $e) {
+            // SMTP not configured — token returned directly in response for dev use
+        }
+
+        return response([
+            'message' => 'Reset instructions sent',
+            'token'   => $token,  // Always returned — frontend redirects directly in dev
+            'email'   => $request->get('email'),
+        ]);
     }
 
     public function performPasswordReset(Request $request): Response

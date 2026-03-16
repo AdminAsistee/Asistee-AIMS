@@ -67,10 +67,10 @@ class User extends Authenticatable
 
     public static function updatePassword(string $token, string $password): void
     {
-        $email = \App\Models\PasswordResets::getEntry($token)->email;
+        $email = \App\PasswordResets::getEntry($token)->email;
         $user = User::whereEmail($email)->first();
         $user->password = bcrypt($password);
         $user->save();
-        \App\Models\PasswordResets::deleteEntry($email);
+        \App\PasswordResets::deleteEntry($email);
     }
 }

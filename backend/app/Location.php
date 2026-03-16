@@ -90,7 +90,16 @@ class Location extends Model {
 		'channel_manager_id',
 		'map_link',
 		'entry_info',
-
+		'mail_rules',
+		'trash_rules',
+		'guest_photo_directions_link',
+		'max_beds',
+		'per_bed_charge',
+		'per_guest_charge',
+		'SplitRate',
+		'default_staff_cleaning_payout',
+		'default_client_charge',
+		'default_cleaner',
 	];
 
 	protected function serializeDate( \DateTimeInterface $date ) {

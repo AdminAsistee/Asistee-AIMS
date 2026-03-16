@@ -80,6 +80,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/locations/{location}/listings', [LocationController::class, 'viewListings']);
         Route::post('/locations/create',     [LocationController::class, 'create']);
         Route::post('/locations/addListing', [LocationController::class, 'addListing']);
+        Route::put('/locations/{location}',  [LocationController::class, 'update']);
         Route::post('/locations-photo/{location}', [LocationController::class, 'uploadPhoto']);
         Route::delete('/locations/{location}',     [LocationController::class, 'delete']);
         Route::delete('/locations-photo/{photo}',  [PropertyPhotoController::class, 'delete']);
@@ -102,8 +103,12 @@ Route::prefix('v1')->group(function () {
         Route::put('/supplies_transactions/{supply_transaction}/deliver', [SuppliesTransactionController::class, 'deliver']);
 
         // — Prices (admin only)
+        Route::get('/prices',            [PriceController::class, 'index']);
         Route::post('/prices/create',        [PriceController::class, 'create']);
         Route::get('/prices/{price}',        [PriceController::class, 'show']);
+        Route::put('/prices/{price}',        [PriceController::class, 'update']);
+        Route::delete('/prices/{price}',     [PriceController::class, 'delete']);
+
 
         // — Channel (admin only)
         Route::get('/channel/cleanings',     [ChannelController::class, 'pullCleanings']);

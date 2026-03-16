@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import {
-  Home, Calendar, ClipboardList, MapPin, Package, Users, User, LogOut
+  Home, Calendar, CalendarDays, ClipboardList, MapPin, Package, Users, User, LogOut, DollarSign
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -9,9 +9,11 @@ const nav = [
   { to: '/', label: 'Dashboard', icon: Home },
   { to: '/bookings', label: 'Bookings', icon: ClipboardList },
   { to: '/cleanings', label: 'Cleanings', icon: Calendar },
+  { to: '/cleaning-calendar', label: 'Calendar', icon: CalendarDays, cleanerVisible: true },
   { to: '/locations', label: 'Locations', icon: MapPin },
   { to: '/supplies', label: 'Supplies', icon: Package },
   { to: '/users', label: 'Users', icon: Users, adminOnly: true },
+  { to: '/pricing', label: 'Pricing', icon: DollarSign, adminOnly: true },
   { to: '/profile', label: 'Profile', icon: User },
 ];
 
@@ -30,8 +32,9 @@ export default function Layout() {
           <span className="badge bg-primary-50 text-primary-700 mt-1">{user?.type}</span>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          {nav.map(({ to, label, icon: Icon, adminOnly }) => {
+          {nav.map(({ to, label, icon: Icon, adminOnly, cleanerVisible }: any) => {
             if (adminOnly && !isAdmin) return null;
+            if (cleanerVisible && !isAdmin && user?.type !== 'cleaner') return null;
             const active = pathname === to || (to !== '/' && pathname.startsWith(to));
             return (
               <Link

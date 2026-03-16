@@ -48,6 +48,11 @@ export default function Login() {
             <input id="password" {...register('password')} type="password" className="input" placeholder="••••••••" />
             {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
           </div>
+          <div className="flex justify-end -mt-1">
+            <Link to="/forgot-password" className="text-xs text-primary-600 hover:underline">
+              Forgot password?
+            </Link>
+          </div>
           <button type="submit" disabled={isSubmitting} className="btn-primary w-full mt-2">
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </button>

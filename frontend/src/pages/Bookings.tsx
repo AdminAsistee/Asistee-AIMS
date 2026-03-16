@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -98,6 +99,7 @@ export default function Bookings() {
   const [editBooking, setEditBooking] = useState<Booking | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [apiError, setApiError] = useState('');
+  const navigate = useNavigate();
 
   const { data, isLoading } = useBookings(page);
   const createMutation = useCreateBooking();
@@ -144,7 +146,17 @@ export default function Bookings() {
     if (!editBooking) return;
     setApiError('');
     try {
-      await updateMutation.mutateAsync({ id: editBooking.id, ...values });
+      const payload: any = {
+        listing_id: values.listing_id,
+        checkin:    values.checkin,
+        checkout:   values.checkout,
+        guests:     values.guests,
+        beds:       values.beds,
+      };
+      if (values.guest_id && values.guest_id !== '') {
+        payload.guest_id = Number(values.guest_id);
+      }
+      await updateMutation.mutateAsync({ id: editBooking.id, ...payload });
       setEditBooking(null);
     } catch (e: any) {
       setApiError(e?.response?.data?.message ?? 'Failed to update booking.');
@@ -192,7 +204,10 @@ export default function Bookings() {
                 ))
               )}
               {!isLoading && data?.data?.map(b => (
-                <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={b.id}
+                  onClick={() => navigate(`/bookings/${b.id}`)}
+                  className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                >
                   <td className="px-5 py-3 text-gray-400 font-mono text-xs">{b.id}</td>
                   <td className="px-5 py-3 text-gray-700 font-medium">#{b.listing_id}</td>
                   <td className="px-5 py-3 text-gray-700">{format(parseISO(b.checkin), 'MMM d, yyyy')}</td>
@@ -201,10 +216,10 @@ export default function Bookings() {
                   <td className="px-5 py-3 text-gray-700">{b.beds}</td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-1 justify-end">
-                      <button onClick={() => openEdit(b)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(b); }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                         <Pencil size={15} />
                       </button>
-                      <button onClick={() => setDeleteId(b.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteId(b.id); }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                         <Trash2 size={15} />
                       </button>
                     </div>

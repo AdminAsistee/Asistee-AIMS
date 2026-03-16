@@ -1,22 +1,23 @@
 import { useState } from 'react';
-import { Plus, ShoppingCart, Wrench } from 'lucide-react';
+import { Plus, ShoppingCart, Wrench, X, Clock, CheckCircle2, Truck, Package } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useSupplies, useCreateSupply, useBuySupply, useUseSupply } from '../hooks/useSupplies';
+import { useSupplyTransactions, useFulfillTransaction, useDeliverTransaction } from '../hooks/useSupplyTransactions';
 import Modal from '../components/ui/Modal';
 import { useAuthStore } from '../stores/authStore';
-import type { Supply } from '../types';
+import type { Supply, SupplyTransaction } from '../types';
 
 const supplySchema = z.object({
   name: z.string().min(1, 'Name required'),
-  ready_stock: z.number({ coerce: true }).int().min(0).optional(),
-  in_use_stock: z.number({ coerce: true }).int().min(0).optional(),
-  in_maintenance_stock: z.number({ coerce: true }).int().min(0).optional(),
+  ready_stock: z.number().int().min(0).optional(),
+  in_use_stock: z.number().int().min(0).optional(),
+  in_maintenance_stock: z.number().int().min(0).optional(),
 });
 type SupplyForm = z.infer<typeof supplySchema>;
 
-const amountSchema = z.object({ amount: z.number({ coerce: true }).int().min(1, 'At least 1 required') });
+const amountSchema = z.object({ amount: z.number().int().min(1, 'At least 1 required') });
 type AmountForm = z.infer<typeof amountSchema>;
 
 function StockBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
@@ -52,10 +53,168 @@ function AmountModal({ open, onClose, title, onConfirm, pending }: { open: boole
   );
 }
 
+function TransactionRow({ tx, isAdmin, onFulfill, onDeliver, fulfillPending, deliverPending }: {
+  tx: SupplyTransaction;
+  isAdmin: boolean;
+  onFulfill: () => void;
+  onDeliver: () => void;
+  fulfillPending: boolean;
+  deliverPending: boolean;
+}) {
+  const isFulfilled = tx.status === 'staged' || tx.status === 'delivered';
+  const isDelivered = tx.status === 'delivered';
+  const typeColors: Record<string, string> = {
+    request: 'bg-blue-50 text-blue-700',
+    buy:     'bg-emerald-50 text-emerald-700',
+    use:     'bg-amber-50 text-amber-700',
+  };
+  const typeLabel = tx.type ? tx.type.charAt(0).toUpperCase() + tx.type.slice(1) : 'Request';
+
+  return (
+    <div className="border border-gray-100 rounded-xl p-3.5 bg-white hover:bg-gray-50/50 transition-colors">
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${typeColors[tx.type ?? 'request'] ?? typeColors.request}`}>
+            {typeLabel}
+          </span>
+          <span className="text-sm font-semibold text-gray-800">×{tx.amount ?? 1}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-gray-400 flex-shrink-0">
+          <Clock size={11} />
+          {tx.created_at ? new Date(tx.created_at).toLocaleDateString('en-JP', { month: 'short', day: 'numeric' }) : '—'}
+        </div>
+      </div>
+
+      {/* Status chips */}
+      <div className="flex items-center gap-2 flex-wrap mb-2.5">
+        <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+          isFulfilled ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-400'
+        }`}>
+          <CheckCircle2 size={11} />
+          {isFulfilled ? 'Staged' : 'Not fulfilled'}
+        </div>
+        <div className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+          isDelivered ? 'bg-primary-50 text-primary-700' : 'bg-gray-100 text-gray-400'
+        }`}>
+          <Truck size={11} />
+          {isDelivered ? 'Delivered' : 'Not delivered'}
+        </div>
+      </div>
+
+      {tx.cleaning_id && (
+        <p className="text-xs text-gray-400 mb-2.5">Cleaning #{tx.cleaning_id}</p>
+      )}
+
+      {/* Admin action buttons */}
+      {isAdmin && (!isFulfilled || !isDelivered) && (
+        <div className="flex gap-2">
+          {!isFulfilled && (
+            <button
+              onClick={onFulfill}
+              disabled={fulfillPending}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors font-medium"
+            >
+              <CheckCircle2 size={11} /> {fulfillPending ? 'Saving…' : 'Mark Fulfilled'}
+            </button>
+          )}
+          {isFulfilled && !isDelivered && (
+            <button
+              onClick={onDeliver}
+              disabled={deliverPending}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 transition-colors font-medium"
+            >
+              <Truck size={11} /> {deliverPending ? 'Saving…' : 'Mark Delivered'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupplyTransactionDrawer({ supply, onClose, isAdmin }: {
+  supply: Supply | null;
+  onClose: () => void;
+  isAdmin: boolean;
+}) {
+  const { data, isLoading } = useSupplyTransactions(supply?.id);
+  const fulfill = useFulfillTransaction();
+  const deliver = useDeliverTransaction();
+
+  if (!supply) return null;
+
+  const transactions: SupplyTransaction[] = data?.data ?? [];
+  const total = supply.ready_stock + supply.in_use_stock + supply.in_maintenance_stock;
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-md bg-white h-full shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">{supply.name}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Transaction History</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Stock summary */}
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+          <p className="text-xs font-medium text-gray-500 mb-2.5 uppercase tracking-wide">Current Stock — {total} total</p>
+          <div className="space-y-2">
+            <StockBar label="Ready" value={supply.ready_stock} total={total || 1} color="bg-emerald-400" />
+            <StockBar label="In Use" value={supply.in_use_stock} total={total || 1} color="bg-blue-400" />
+            <StockBar label="In Maintenance" value={supply.in_maintenance_stock} total={total || 1} color="bg-amber-400" />
+          </div>
+        </div>
+
+        {/* Transaction list */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isLoading && (
+            <div className="space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="border border-gray-100 rounded-xl p-3.5 animate-pulse">
+                  <div className="h-4 bg-gray-100 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          )}
+          {!isLoading && transactions.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              <Package size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No transactions yet for this supply item.</p>
+            </div>
+          )}
+          {!isLoading && transactions.length > 0 && (
+            <div className="space-y-3">
+              {transactions.map(tx => (
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  isAdmin={isAdmin}
+                  onFulfill={() => fulfill.mutate(tx.id)}
+                  onDeliver={() => deliver.mutate(tx.id)}
+                  fulfillPending={fulfill.isPending}
+                  deliverPending={deliver.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Supplies() {
   const [createOpen, setCreateOpen] = useState(false);
   const [buySupply, setBuySupply] = useState<Supply | null>(null);
   const [useSupply, setUseSupply] = useState<Supply | null>(null);
+  const [historySupply, setHistorySupply] = useState<Supply | null>(null);
   const [apiError, setApiError] = useState('');
 
   const { data, isLoading } = useSupplies();
@@ -106,14 +265,18 @@ export default function Supplies() {
         {!isLoading && data?.data?.map(s => {
           const total = s.ready_stock + s.in_use_stock + s.in_maintenance_stock;
           return (
-            <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+            <div
+              key={s.id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => setHistorySupply(s)}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-base">{s.name}</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">Total: {total} units</p>
+                  <h3 className="font-semibold text-gray-900 text-base group-hover:text-primary-600 transition-colors">{s.name}</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Total: {total} units · <span className="text-primary-500">View history →</span></p>
                 </div>
                 {canManage && (
-                  <div className="flex gap-1">
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setBuySupply(s)} title="Buy more"
                       className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
                       <ShoppingCart size={14} />
@@ -177,6 +340,12 @@ export default function Supplies() {
         title={`Use Stock — ${useSupply?.name}`}
         pending={use.isPending}
         onConfirm={async (amount) => { if (useSupply) { await use.mutateAsync({ id: useSupply.id, amount }); setUseSupply(null); } }}
+      />
+
+      <SupplyTransactionDrawer
+        supply={historySupply}
+        onClose={() => setHistorySupply(null)}
+        isAdmin={canManage}
       />
     </div>
   );

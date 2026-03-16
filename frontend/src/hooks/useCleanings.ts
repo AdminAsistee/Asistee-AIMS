@@ -32,7 +32,13 @@ export function useAssignCleaner() {
   return useMutation({
     mutationFn: (data: { cleaningId: number; cleanerId: number }) =>
       api.put('/api/v1/assign-cleaner', data).then(r => r.data),
-    onSuccess: () => qc.refetchQueries({ queryKey: [QUERY_KEY] }),
+    onSuccess: (data) => {
+      qc.refetchQueries({ queryKey: [QUERY_KEY] });
+      if (data?.id) {
+        qc.refetchQueries({ queryKey: ['cleaning', data.id] });
+        qc.refetchQueries({ queryKey: ['cleaning', String(data.id)] });
+      }
+    },
   });
 }
 
@@ -41,7 +47,13 @@ export function useUnassignCleaner() {
   return useMutation({
     mutationFn: (cleaningId: number) =>
       api.put('/api/v1/unassign-cleaner', { cleaningId }).then(r => r.data),
-    onSuccess: () => qc.refetchQueries({ queryKey: [QUERY_KEY] }),
+    onSuccess: (data) => {
+      qc.refetchQueries({ queryKey: [QUERY_KEY] });
+      if (data?.id) {
+        qc.refetchQueries({ queryKey: ['cleaning', data.id] });
+        qc.refetchQueries({ queryKey: ['cleaning', String(data.id)] });
+      }
+    },
   });
 }
 
@@ -50,6 +62,12 @@ export function useAssignMe() {
   return useMutation({
     mutationFn: (cleaningId: number) =>
       api.put('/api/v1/assign-me', { cleaningId }).then(r => r.data),
-    onSuccess: () => qc.refetchQueries({ queryKey: [QUERY_KEY] }),
+    onSuccess: (data) => {
+      qc.refetchQueries({ queryKey: [QUERY_KEY] });
+      if (data?.id) {
+        qc.refetchQueries({ queryKey: ['cleaning', data.id] });
+        qc.refetchQueries({ queryKey: ['cleaning', String(data.id)] });
+      }
+    },
   });
 }

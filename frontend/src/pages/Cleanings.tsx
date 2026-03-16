@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, UserCheck, UserX } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -130,6 +131,7 @@ export default function Cleanings() {
   const [createOpen, setCreateOpen] = useState(false);
   const [assignCleaning, setAssignCleaning] = useState<Cleaning | null>(null);
   const [apiError, setApiError] = useState('');
+  const navigate = useNavigate();
 
   const { data, isLoading } = useCleanings(page);
   const create = useCreateCleaning();
@@ -189,7 +191,10 @@ export default function Cleanings() {
                 ))}</tr>
               ))}
               {!isLoading && data?.data?.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                <tr key={c.id}
+                  onClick={() => navigate(`/cleanings/${c.id}`)}
+                  className="hover:bg-gray-50/50 transition-colors cursor-pointer"
+                >
                   <td className="px-5 py-3 text-gray-400 font-mono text-xs">{c.id}</td>
                   <td className="px-5 py-3 font-medium text-gray-800">{format(parseISO(c.cleaning_date), 'MMM d, yyyy')}</td>
                   <td className="px-5 py-3 text-gray-700">{c.location?.building_name ?? `#${c.location_id}`}</td>
@@ -205,12 +210,12 @@ export default function Cleanings() {
                   <td className="px-5 py-3">
                     {isAdmin && (
                       <div className="flex items-center gap-1 justify-end">
-                        <button onClick={() => setAssignCleaning(c)} title="Assign cleaner"
+                        <button onClick={(e) => { e.stopPropagation(); setAssignCleaning(c); }} title="Assign cleaner"
                           className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors">
                           <UserCheck size={15} />
                         </button>
                         {c.cleaner_id && (
-                          <button onClick={() => unassign.mutateAsync(c.id)} title="Unassign cleaner"
+                          <button onClick={(e) => { e.stopPropagation(); unassign.mutateAsync(c.id); }} title="Unassign cleaner"
                             className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors">
                             <UserX size={15} />
                           </button>

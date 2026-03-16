@@ -39,15 +39,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class PropertyPhoto extends Model {
 	use SoftDeletes;
 
+	/**
+	 * Photos are stored in public/uploads/photos/{id}/ and served directly.
+	 * No Storage::url() accessor needed — raw path is returned as-is.
+	 */
+	protected $fillable = ['full_path', 'thumb_path', 'type', 'name', 'location_id', 'user_id'];
+
 	public function location() {
 		return $this->belongsTo( Location::class );
-	}
-
-	public function getFullPathAttribute( $value ) {
-		return \URL::to( '/' ) . \Storage::url( $value );
-	}
-
-	public function getThumbPathAttribute( $value ) {
-		return \URL::to( '/' ) . \Storage::url( $value );
 	}
 }

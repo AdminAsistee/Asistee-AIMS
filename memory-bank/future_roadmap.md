@@ -10,39 +10,72 @@
 - [x] **Bug Fix: Login & Navigation** — Fixed missing Gates, 401 interceptor loop, seeded passwords, Login form accessibility
 - [x] **QA E2E Suite** — 37 Playwright tests across 6 spec files (23/37 passing), `QA_STATUS.md` created
 - [x] **GitHub Push** — Commit `3e75d7a` — all Phase 3 + QA code pushed to `origin/main`
-- [x] **Manual QA Bug Fixes** — Fixed Passport→Sanctum in `app/User.php`, wrong namespace in `App\Models\User::locations()`, cleaner Gate bug (0 cleanings for admin), Booking form Location dropdown replacing raw Listing ID — commit `b54a96b`
+- [x] **Manual QA Bug Fixes** — Fixed Passport→Sanctum, wrong namespace, cleaner Gate bug, Booking Location dropdown — commit `b54a96b`
+- [x] **Phase 4A Quick Wins** — All 5 features implemented, browser-tested & pushed commit `6b6183f`:
+  - Add User modal (admin creates users with any role)
+  - Location → auto-creates Manual channel account + listing on registration
+  - Booking: optional guest/client dropdown
+  - Cleaning: location dropdown + optional cleaner pre-assign
+  - Cleaner Dashboard: Today's Cleanings + Unassigned + Assign Me
+  - Location delete with upcoming-booking guard
+- [x] **Phase 4A Bug Fixes** — `forceDelete()` for freed emails, `channel_listing_id` default, optional select field validation, Zod v4 coerce fixes, `refetchQueries` for instant UI updates
+- [x] **Phase 4 Medium Effort** — All core items implemented (2026-03-16):
+  - `BookingDetail` page (`/bookings/:id`) — inline editing, guest panel, location panel, linked cleaning
+  - `CleaningDetail` page (`/cleanings/:id`) — assign/unassign cleaner, status+times edit, location+photos, next booking, supply request/fulfill/deliver
+  - `PasswordResetRequest` page (`/forgot-password`) — email form → calls `POST /request-password-reset`
+  - `PasswordResetForm` page (`/reset-password?token=`) — new password form → calls `POST /reset-password`
+  - `Pricing` page (`/pricing`, admin only) — create flat fee + percentage price structures
+  - Bookings + Cleanings list rows are now **clickable** → navigate to detail
+  - Pricing link added to sidebar (admin only)
+  - Types extended: `SupplyTransaction`, `Price`, `ChannelAccount`, `Booking.guest`, `Listing.listing_title`
+  - New hooks: `useBookingDetail`, `useCleaningDetail`, `useSupplyTransactions`, `usePrices`
+- [x] **Location Inline Editing** — `✏️ Edit Info` button in drawer; all fields editable; no page reload required (2026-03-16).
+- [x] **Location Photo Upload Fixed** — Removed Intervention Image dependency; stores in `public/uploads/photos/{id}/`; accessible without storage:link (2026-03-16).
+- [x] **Immediate UI Refresh** — All location mutations (edit, photo upload) update drawer state from API response directly (2026-03-16).
+- [x] **Photo 403 Fix + Shared `photoUrl.ts`** — Removed bad Eloquent accessors from `PropertyPhoto.php`; created `src/lib/photoUrl.ts` shared URL normalizer used by both `Locations.tsx` and `CleaningDetail.tsx` (2026-03-16).
+- [x] **Photo Delete** — Hover trash icon on thumbnails (admin only); `useDeletePhoto` hook; cross-module cache invalidation so CleaningDetail also refreshes (2026-03-16).
+- [x] **Photo Lightbox** — Click-to-enlarge modal in Locations; prev/next navigation with counter in CleaningDetail (2026-03-16).
+- [x] **CleaningDetail Photo URLs Fixed** — Was using hardcoded `/storage/` prefix; now uses `getPhotoUrl()` (2026-03-16).
+- [x] **Location Calendar TF Day** — `LocationController::show()` now computes `tf_status` for each cleaning (was always false/undefined) (2026-03-16).
+- [x] **Cleaning Calendar thisMonth Bug** — Sending `YYYY-MM` string instead of `"1"` (which Carbon parsed as January) (2026-03-16).
+- [x] **Pricing Full CRUD** — `GET/PUT/DELETE /prices` routes; `PriceController::index/update/delete`; `useListPrices/useUpdatePrice/useDeletePrice` hooks; `Pricing.tsx` rebuilt with persistent DB list + inline edit + delete (2026-03-16).
 
 ---
 
 ## In Progress 🔨
-- [ ] **Phase 4: Gen 2 Feature Integration** — iCal sync, Channel Manager, Extra Services, Pricing Engine
+- [x] ~~**Phase 4 Medium Effort — Remaining 2 items**~~ ✅ **COMPLETE** — Location Listings tab + Supply transaction history drawer both implemented
+- [x] **Newly Discovered Gen 2 Gaps — ALL COMPLETE** (2026-03-16):
+  - `CleaningCalendar` page — native date-fns monthly grid, cleaner filter, click-to-navigate
+  - Location `$fillable` + `LocationController` validation updated for all missing fields
+  - Location `types/index.ts` extended with all Gen 2 fields
+  - `Locations.tsx` Info tab: `mail_rules`, `trash_rules`, `guest_photo_directions_link` displayed
+  - `CleaningDetail.tsx` location panel: `mail_rules`, `trash_rules`, photo directions link
+  - `BookingDetail.tsx`: admin status dropdown editor (confirmed/pending/checked_in/checked_out/cancelled)
 
 ---
 
 ## Planned 📋
 
 ### Phase 4 — Complete Gen 2 Feature Parity
-> 🔍 **Gen 3 Parity Audit (2026-03-16)**: Backend routes (100%), models (100%) are fully migrated.
-> Gaps are entirely in the **frontend** — missing detail/single views, calendar views, and role-based dashboard widgets.
+> 🔍 **Gen 2 Source Code Audit (2026-03-16)**: Direct comparison of Gen 2 source (`frontend-legacy/`, `backend-legacy/`)
+> against Gen 3. Gaps below reflect actual files found: `Calendar.js`, `CleaningSingle.js`, `LocationSingle.js`,
+> `SupplySingle.js`, `Profile/PaymentCard.js`.
 
-#### 🟢 Quick Wins (Small Effort)
-- [ ] **Add User modal** — Admin creates users with any role directly from Users page (currently: register as client → edit role separately)
-- [ ] **Location → Listing auto-create** — Auto-seed a Manual listing when a new location is registered (currently: manual DB seeding needed for bookings to work)
-- [ ] **Booking guest_id assignment** — Guest dropdown in New Booking form so admin can link a booking to a specific client
-- [ ] **Cleaning form: Location dropdown** — Replace raw "Location ID" input with a Location picker (same fix done for Bookings)
-- [ ] **Cleaner Dashboard widgets** — Role-conditional panels: "Today's Cleanings" + "Unassigned Cleanings" + "Assign Me" button on Dashboard (`TodayCleanings.js` + `UnassignedCleanings.js` existed in Gen 3)
+#### 🟡 Medium Effort — Remaining (2 items)
+- [x] **Location drawer: Listings tab** — 3-tab drawer (Info/Photos/Listings). Listings tab shows OTA/channel badge, status, `channel_listing_id`, booking count, and placeholder "Connect OTA" / "Sync Now" / "Add iCal URL" buttons. _(Gen 2: `LocationSingle.js`)_
+- [x] **Supply transaction history drawer** — Clicking a supply card opens a slide-in drawer showing stock summary + scrollable transaction log with type badges, timestamps, fulfill/deliver status chips, and admin action buttons. `useSupplyTransactions` updated to filter by `supply_id`. _(Gen 2: `SupplySingle.js`, `SuppliesTransactionController.php` ✅)_
 
-#### 🟡 Medium Effort
-- [ ] **Booking Single Detail page** (`/bookings/:id`) — Inline-editable checkin/checkout dates & times, guest/bed count, stay duration calc, related Location info panel, related Cleaning link. _(Gen 3: `BookingSingle.js`)_
-- [ ] **Cleaning Single Detail page** (`/cleanings/:id`) — Supply request panel (cleaner requests items for a job), fulfill/deliver status buttons, next booking info panel, location photos display. _(Gen 3: `CleaningSingle.js`)_
-- [ ] **Location detail enhancements** — Add to existing slide-in drawer: Property Calendar (bookings + cleanings by date), Associated Cleanings table, Associated Listings + Bookings table. _(Gen 3: `LocationSingle.js`)_
-- [ ] **Supply transaction history + detail view** — Per-supply drawer showing all Buy/Use/Move log entries (`SuppliesTransactionController.php` ✅ ready); also add supply single detail view with fulfill/deliver status workflow. _(Gen 3: `SupplySingle.js`)_
-- [ ] **Pricing Engine** — Hierarchical price structures (flat fee + percentage splits) used for cleaner payouts and client charges (`PriceController.php` ✅ ready), needs new `/pricing` page
-- [ ] **Password Reset frontend** — Request email form + reset form pages. Backend routes (`POST /request-password-reset`, `POST /reset-password`) already exist; no frontend. _(Gen 3: `ResetEmail.js` + `ResetForm.js`)_
-- [ ] **Channel Accounts management** — UI to add/edit OTA credentials (Airbnb, Booking.com API keys stored encrypted). Required before Channel Manager. (`ChannelAccountController.php` — stub, needs implementing)
-- [ ] **Extra Services** — Service catalog (airport pickup, welcome pack, etc.) attachable to bookings (`ExtraServiceController.php` — stub, needs implementing)
-- [ ] **Feedback / Reviews** — Guest submits rating + text per booking (`FeedbackController.php` — stub, needs implementing)
-- [ ] **Notes** — Attach text notes to cleanings/bookings (`NoteController.php` — stub, needs implementing)
+#### 🟠 Newly Discovered Gen 2 Gaps — ALL COMPLETE (2026-03-16)
+> These were found during the 2026-03-16 Gen 2 source audit and were not in the original roadmap.
+
+- [x] **Cleaning Calendar** (`/cleaning-calendar`) — Monthly calendar grid (date-fns), cleaner filter (admin), click event → `/cleanings/:id`. No external library needed. _(Gen 2: `Cleaning/Calendar.js`)_
+- [x] **Location Calendar** (inside Location drawer) — 4th tab: monthly booking span bars (blue, click → `/bookings/:id`) + cleaning day markers (teal, click → `/cleanings/:id`). Month navigation, legend, totals. Data from existing `show()` response. _(Gen 2: `Location/Calendar.js`)_
+- [x] **Location additional fields** — All fields already in DB migration. Updated `$fillable`, `LocationController` validation, `types/index.ts`, `Locations.tsx` Info tab, `CleaningDetail.tsx` location panel.
+- [x] **`previous_cleaning` on BookingDetail** — Was already coded in Phase 4 Medium.
+- [x] **`guest_photo_directions_link`** — Now shown in Location Info tab and CleaningDetail location panel.
+- [x] **Booking `status` field editing** — Admin-only dropdown in `BookingDetail.tsx` edit mode.
+- ~~**Srizon module**~~ — Found in `frontend-legacy/src/containers/modules/Srizon/`. All Redux actions are commented out, no backend controller exists. This was an **incomplete/abandoned feature in Gen 2 itself** — safe to exclude from Gen 3.
+
 
 #### 🔴 Large Effort (Phase 4 Finale)
 
@@ -57,11 +90,13 @@
 - [ ] **Channel Accounts management** — Admin connects OTA credentials (Airbnb API key, Booking.com token). Lives as a settings panel accessible from Location detail AND from a global Settings page. (`ChannelAccountController.php` stub — needs implementing)
 - [ ] **Location: Listings tab** — Show all listings linked to a location. Each listing shows its OTA/channel, status, and `channel_listing_id`. Buttons: "Connect OTA" (link to existing ChannelAccount), "Add iCal URL", "Sync Now"
 - [ ] **OTA-first onboarding** — "Import from OTA" button on Locations page: pick a Channel Account → fetch OTA property list → select → auto-create Location + Listing
-- [ ] **iCal sync per listing** — Each listing has an optional iCal URL field. "Sync Now" calls `ChannelController::pullCleanings()` which parses the iCal (`johngrogg/ics-parser` installed), imports bookings, and auto-generates cleaning tasks on checkout dates
+- [ ] **iCal sync per listing** — Wire `ChannelController::pullCleanings()` → `ChannelProcessor::updateListingFromPull()` to actually persist bookings + create cleanings on checkout dates
+- [ ] **Extra Services** — Service catalog (airport pickup, welcome pack, etc.) attachable to bookings (`ExtraServiceController.php` — stub, needs implementing)
+- [ ] **Feedback / Reviews** — Guest submits rating + text per booking (`FeedbackController.php` — stub, needs implementing)
+- [ ] **Notes** — Attach text notes to cleanings/bookings (`NoteController.php` — stub, needs implementing)
 - [ ] **QA Hardening** — Add `htmlFor`/`id` to all module modal form fields → fixes remaining 14/37 Playwright test failures
 
-
-#### ⚠️ Backend Stubs & Partials Still Needing Implementation
+#### ⚠️ Backend Stubs Still Needing Implementation
 | Controller | Current Size | Status |
 |---|---|---|
 | `NoteController.php` | 131 bytes | Stub — needs full CRUD |
@@ -82,9 +117,11 @@
 ---
 
 ## Ideas / Backlog 💡
+- **SMTP Email Configuration** — Set up mail driver (Mailgun, SendGrid, SES, or SMTP) in `.env` so password reset emails are sent for real. Currently the backend returns the token directly in the API response as a dev bypass; the frontend redirects immediately. When SMTP is live, the token will only travel through email and the redirect bypass can be removed.
+- **Stripe Payment on Profile** — Save/change credit card (Gen 2: `Profile/PaymentCard.js`). Requires Stripe account + `card_last_four`/`card_brand`/`stripe_customer_id` migration. **Deferred post-launch.**
 - Dashboard KPIs — Occupancy rate, upcoming cleanings, revenue summary cards
 - Push notifications — Notify cleaners when a cleaning is assigned
 - Mobile-responsive — Improve mobile layout
-- Dark mode — Tailwind `dark:` classes throughout
+- Dark mode — throughout
 - API documentation — Auto-generate with Scramble or L5-Swagger
 - Backend tests — Feature tests for auth, bookings, cleanings (Pest/PHPUnit)

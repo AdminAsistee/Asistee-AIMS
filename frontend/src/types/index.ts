@@ -53,6 +53,18 @@ export interface Location {
   owner_id: number;
   map_link?: string;
   entry_info?: string;
+  // Gen 2 fields — all exist in DB, now in $fillable
+  mail_rules?: string | null;
+  trash_rules?: string | null;
+  guest_photo_directions_link?: string | null;
+  max_beds?: number | null;
+  per_bed_charge?: number | null;
+  per_guest_charge?: number | null;
+  SplitRate?: number | null;
+  default_staff_cleaning_payout?: number | null;
+  default_client_charge?: number | null;
+  default_cleaner?: number | null;
+  status?: string | null;
   owner?: User;
   photos?: PropertyPhoto[];
   listings?: Listing[];
@@ -60,9 +72,25 @@ export interface Location {
   updated_at?: string;
 }
 
+
+// ─── Channel Account ──────────────────────────────────────────────────────────
+export interface ChannelAccount {
+  id: number;
+  channel: string;
+  channel_id?: number;
+  authentication_token?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // ─── Listing ──────────────────────────────────────────────────────────────────
 export interface Listing {
   id: number;
+  listing_title?: string | null;
+  channel_listing_id?: string | null;
+  status?: string | null;
+  channel_account_id?: number | null;
+  channel_account?: ChannelAccount | null;
   locations?: Location[];
   bookings?: Booking[];
   created_at?: string;
@@ -77,8 +105,12 @@ export interface Booking {
   checkout: string;
   guests: number;
   beds: number;
+  guest_id?: number | null;
+  status?: string | null;
   planned_checkin_time?: string | null;
   planned_checkout_time?: string | null;
+  confirmation_code?: string | null;
+  guest?: User | null;
   listing?: Listing;
   created_at?: string;
   updated_at?: string;
@@ -97,6 +129,7 @@ export interface Cleaning {
   next_booking?: Booking | false;
   location?: Location;
   cleaner?: User | null;
+  supplies?: SupplyTransaction[];
   created_at?: string;
   updated_at?: string;
 }
@@ -108,6 +141,31 @@ export interface Supply {
   ready_stock: number;
   in_use_stock: number;
   in_maintenance_stock: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ─── Supply Transaction ───────────────────────────────────────────────────────
+export interface SupplyTransaction {
+  id: number;
+  supply_id: number;
+  supply?: Supply;
+  cleaning_id?: number | null;
+  type?: string | null;
+  amount?: number | null;
+  // Backend uses status string: 'not_fulfilled' | 'staged' | 'delivered'
+  status?: 'not_fulfilled' | 'staged' | 'delivered' | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// ─── Price ────────────────────────────────────────────────────────────────────
+export interface Price {
+  id: number;
+  parent_id?: number | null;
+  total?: number | null;
+  percentage?: boolean;
+  description?: string | null;
   created_at?: string;
   updated_at?: string;
 }
