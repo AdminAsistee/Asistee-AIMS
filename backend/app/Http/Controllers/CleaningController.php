@@ -10,7 +10,6 @@ use App\Cleaning;
 use App\Location;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Laravel\Passport\Passport;
 use Illuminate\Pagination\Paginator;
 use App\Scopes\CleaningFilter;
 

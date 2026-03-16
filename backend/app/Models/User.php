@@ -52,7 +52,7 @@ class User extends Authenticatable
 
     public function locations()
     {
-        return $this->hasMany(Location::class, 'owner_id');
+        return $this->hasMany(\App\Location::class, 'owner_id');
     }
 
     public function scopeFilter(Builder $query, ModelFilter $filter): Builder

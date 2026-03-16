@@ -31,9 +31,7 @@ class AppServiceProvider extends ServiceProvider
             'administrator', 'supervisor', 'manager',
         ]));
 
-        Gate::define('cleaner', fn(User $user) => in_array($user->type, [
-            'administrator', 'cleaner',
-        ]));
+        Gate::define('cleaner', fn(User $user) => $user->type === 'cleaner');
 
         // Gates used by Gen 3 module controllers
         Gate::define('operations', fn(User $user) => in_array($user->type, [

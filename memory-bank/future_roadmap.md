@@ -7,6 +7,9 @@
 - [x] **Phase 1B: Frontend Upgrade** — React 16/CRA → React 18/Vite 5/TypeScript
 - [x] **Phase 2: API Connection** — 70 routes registered, CORS configured, browser login working end-to-end
 - [x] **Phase 3: Module Pages** — Dashboard KPIs, Bookings, Cleanings, Locations, Supplies, Users, Profile all functional
+- [x] **Bug Fix: Login & Navigation** — Fixed missing Gates, 401 interceptor loop, seeded passwords, Login form accessibility
+- [x] **QA E2E Suite** — 37 Playwright tests across 6 spec files (23/37 passing), `QA_STATUS.md` created
+- [x] **GitHub Push** — Commit `3e75d7a` — all Phase 3 + QA code pushed to `origin/main`
 
 ---
 
@@ -33,10 +36,12 @@
 ---
 
 ## Ideas / Backlog 💡
+- **QA Hardening** — Add `htmlFor`/`id` to all module modal form fields to fix remaining 14 Playwright test failures
+- **Booking guest_id** — Admin should be able to pick which client a booking is for (currently auto-assigns admin as guest)
 - Dashboard KPIs — Occupancy rate, upcoming cleanings, revenue summary cards
 - Push notifications — Notify cleaners when a cleaning is assigned
 - Mobile-responsive — Improve mobile layout on Cleanings calendar
 - Dark mode — Tailwind dark: classes throughout
 - API documentation — Auto-generate with Scramble or L5-Swagger
-- Test suite — Write Feature tests for auth, bookings, cleanings (PHPUnit + Pest)
+- Backend tests — Write Feature tests for auth, bookings, cleanings (PHPUnit + Pest)
 - Data migration — Script to migrate `aims_core` data to `aims_core_v2` for production cutover

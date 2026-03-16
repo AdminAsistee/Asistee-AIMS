@@ -5,13 +5,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
 import { useBookings, useCreateBooking, useUpdateBooking, useDeleteBooking } from '../hooks/useBookings';
+import { useLocationOptions } from '../hooks/useLocationOptions';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Pagination from '../components/ui/Pagination';
 import type { Booking } from '../types';
 
 const bookingSchema = z.object({
-  listing_id: z.number({ coerce: true }).int().min(1, 'Listing ID required'),
+  listing_id: z.number({ coerce: true }).int().min(1, 'Please select a property'),
   checkin: z.string().min(1, 'Check-in required'),
   checkout: z.string().min(1, 'Check-out required'),
   guests: z.number({ coerce: true }).int().min(1).max(1000),
@@ -19,36 +20,63 @@ const bookingSchema = z.object({
 });
 type BookingForm = z.infer<typeof bookingSchema>;
 
-function BookingFormFields({ register, errors }: { register: any; errors: any }) {
+function BookingFormFields({ register, errors, setValue }: { register: any; errors: any; setValue: any }) {
+  const { data: locData, isLoading: locLoading } = useLocationOptions();
+  const locations = locData?.data ?? [];
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const locId = parseInt(e.target.value);
+    const loc = locations.find(l => l.id === locId);
+    // Pick the first listing linked to this location
+    const listingId = loc?.listings?.[0]?.id ?? 0;
+    setValue('listing_id', listingId, { shouldValidate: true });
+  };
+
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Listing ID</label>
-        <input {...register('listing_id', { valueAsNumber: true })} type="number" min={1}
-          className="input w-full" placeholder="e.g. 1" />
+        <label htmlFor="location_select" className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+        <select
+          id="location_select"
+          onChange={handleLocationChange}
+          className="input w-full"
+          defaultValue=""
+        >
+          <option value="" disabled>
+            {locLoading ? 'Loading properties…' : '— Select a property —'}
+          </option>
+          {locations.map(loc => (
+            <option key={loc.id} value={loc.id}>
+              {loc.building_name} #{loc.room_number}
+              {(!loc.listings || loc.listings.length === 0) ? ' (no listing)' : ''}
+            </option>
+          ))}
+        </select>
+        {/* Hidden field carries the resolved listing_id */}
+        <input type="hidden" {...register('listing_id', { valueAsNumber: true })} />
         {errors.listing_id && <p className="text-xs text-red-500 mt-1">{errors.listing_id.message}</p>}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
-          <input {...register('checkin')} type="date" className="input w-full" />
+          <label htmlFor="checkin" className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
+          <input id="checkin" {...register('checkin')} type="date" className="input w-full" />
           {errors.checkin && <p className="text-xs text-red-500 mt-1">{errors.checkin.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
-          <input {...register('checkout')} type="date" className="input w-full" />
+          <label htmlFor="checkout" className="block text-sm font-medium text-gray-700 mb-1">Check-out</label>
+          <input id="checkout" {...register('checkout')} type="date" className="input w-full" />
           {errors.checkout && <p className="text-xs text-red-500 mt-1">{errors.checkout.message}</p>}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
-          <input {...register('guests', { valueAsNumber: true })} type="number" min={1} className="input w-full" />
+          <label htmlFor="guests" className="block text-sm font-medium text-gray-700 mb-1">Guests</label>
+          <input id="guests" {...register('guests', { valueAsNumber: true })} type="number" min={1} className="input w-full" />
           {errors.guests && <p className="text-xs text-red-500 mt-1">{errors.guests.message}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
-          <input {...register('beds', { valueAsNumber: true })} type="number" min={0} className="input w-full" />
+          <label htmlFor="beds" className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
+          <input id="beds" {...register('beds', { valueAsNumber: true })} type="number" min={0} className="input w-full" />
         </div>
       </div>
     </div>
@@ -175,7 +203,7 @@ export default function Bookings() {
       {/* Create Modal */}
       <Modal open={createOpen} onClose={() => { setCreateOpen(false); setApiError(''); }} title="New Booking">
         <form onSubmit={handleCreate} className="space-y-5">
-          <BookingFormFields register={createForm.register} errors={createForm.formState.errors} />
+          <BookingFormFields register={createForm.register} errors={createForm.formState.errors} setValue={createForm.setValue} />
           {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={() => setCreateOpen(false)} className="btn-secondary">Cancel</button>
@@ -189,7 +217,7 @@ export default function Bookings() {
       {/* Edit Modal */}
       <Modal open={!!editBooking} onClose={() => { setEditBooking(null); setApiError(''); }} title={`Edit Booking #${editBooking?.id}`}>
         <form onSubmit={handleEdit} className="space-y-5">
-          <BookingFormFields register={editForm.register} errors={editForm.formState.errors} />
+          <BookingFormFields register={editForm.register} errors={editForm.formState.errors} setValue={editForm.setValue} />
           {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={() => setEditBooking(null)} className="btn-secondary">Cancel</button>

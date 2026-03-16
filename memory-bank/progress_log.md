@@ -68,3 +68,26 @@
 - **Build verified**: `tsc --noEmit` → 0 errors. `vite build` → ✓ built in 5.4s.
 - **Files affected**: `frontend/src/types/index.ts`, `frontend/src/hooks/` (5 files), `frontend/src/components/ui/` (4 files), `frontend/src/pages/` (7 files).
 
+---
+
+## 2026-03-16 07:10 (JST) — Bug Fix: Login & Navigation Loop
+- **Root cause**: User passwords in DB didn't match — reset both `tech@asistee.com` and `alexa@asistee.com` to `aimsasistee` via PHP script.
+- **Root cause**: `CleaningController` (and others) used `Gate::allows('operations')` but the `operations` gate was never defined in `AppServiceProvider` — causing 403 on all module data endpoints.
+- **Fix**: Added all missing Gates to `backend/app/Providers/AppServiceProvider.php`: `operations`, `kankeisha`, `client`, `view_Cleaning`, `update_Cleaning`, `view_Location`, `update_Location`, `create_Location`.
+- **Root cause**: `api.ts` 401 interceptor wiped `aims_token` AND `aims-auth` (Zustand persist) on any 401, causing a redirect loop (Zustand still showed `isAuthenticated: true`, so PublicRoute sent user back to `/`).
+- **Fix**: Interceptor now only logs out when the `/me` or `/login` auth endpoint returns 401 — not on module data permission errors.
+- **Fix**: Added `htmlFor`/`id` attributes to Login form email and password inputs for Playwright selector compatibility and accessibility.
+- **Verified in browser**: All 6 module pages navigate correctly without redirect loops.
+- **Files affected**: `backend/app/Providers/AppServiceProvider.php`, `frontend/src/lib/api.ts`, `frontend/src/pages/Login.tsx`.
+
+---
+
+## 2026-03-16 07:55 (JST) — QA E2E Suite + GitHub Push
+- Invoked `@qa-architect full` — wrote Playwright E2E tests for all 6 module pages.
+- Created `frontend/e2e/helpers.ts` (shared `loginAsAdmin()` helper).
+- Created 5 new spec files: `auth.spec.ts` (fixed), `bookings.spec.ts`, `cleanings.spec.ts`, `locations.spec.ts`, `supplies.spec.ts`, `users-profile.spec.ts` — 37 tests total.
+- Installed Playwright Chromium browser (`npx playwright install chromium`).
+- **Test results**: 23/37 passing (62%). 14 failures are selector mismatches on module forms (missing `htmlFor`/`id` on modal inputs) — documented in `QA_STATUS.md`.
+- Cleaned all test data from DB (8 tables truncated, 2 user accounts preserved).
+- **Git commit**: `3e75d7a` — `feat: Phase 3 — module pages + QA E2E suite` — pushed to `origin/main`.
+- **Files added**: `frontend/e2e/helpers.ts`, `frontend/e2e/bookings.spec.ts`, `frontend/e2e/cleanings.spec.ts`, `frontend/e2e/locations.spec.ts`, `frontend/e2e/supplies.spec.ts`, `frontend/e2e/users-profile.spec.ts`, `frontend/QA_STATUS.md`.

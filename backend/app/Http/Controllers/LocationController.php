@@ -70,13 +70,12 @@ class LocationController extends Controller {
 	 */
 	public function index( LocationFilter $filter ) {
 		if ( Gate::allows( 'kankeisha' ) ) {
-			return Location::filter( $filter )->with( 'owner' )->orderBy( 'id', 'desc' )->paginate( $filter->itemsPerPage );
+			return Location::filter( $filter )->with( ['owner', 'listings'] )->orderBy( 'id', 'desc' )->paginate( $filter->itemsPerPage );
 		} elseif ( Gate::allows( 'client', Location::class ) ) {
-			return Location::filter( $filter )->with( 'owner' )->where( [ 'owner_id' => Auth::user()->id ] )->paginate( $filter->itemsPerPage );
+			return Location::filter( $filter )->with( ['owner', 'listings'] )->where( [ 'owner_id' => Auth::user()->id ] )->paginate( $filter->itemsPerPage );
 		} else {
 			return $this->AuthorizationFailureResponse( 'view', 'Location' );
 		}
-
 	}
 
 	/**
