@@ -38,10 +38,11 @@ Route::prefix('v1')->group(function () {
 
         // — Users (admin only)
         Route::middleware('can:admin')->group(function () {
-            Route::get('/users',             [UserController::class, 'index']);
-            Route::get('/users/{user}',      [UserController::class, 'show']);
-            Route::put('/users/{user}',      [UserController::class, 'update']);
-            Route::delete('/users/{user}',   [UserController::class, 'delete']);
+            Route::get('/users',                    [UserController::class, 'index']);
+            Route::get('/users/{user}',             [UserController::class, 'show']);
+            Route::put('/users/{user}',             [UserController::class, 'update']);
+            Route::delete('/users/{user}',          [UserController::class, 'delete']);
+            Route::post('/users/admin-create',      [UserController::class, 'adminCreate']);
         });
 
         // — Bookings (management only)
@@ -80,7 +81,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/locations/create',     [LocationController::class, 'create']);
         Route::post('/locations/addListing', [LocationController::class, 'addListing']);
         Route::post('/locations-photo/{location}', [LocationController::class, 'uploadPhoto']);
+        Route::delete('/locations/{location}',     [LocationController::class, 'delete']);
         Route::delete('/locations-photo/{photo}',  [PropertyPhotoController::class, 'delete']);
+
 
         // — Supplies
         Route::post('/supplies',             [SupplyController::class, 'store']);

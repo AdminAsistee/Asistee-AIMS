@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Location;
 use App\Listing;
+use App\Channel;
+use App\ChannelAccount;
 use App\PropertyPhoto;
 use App\Scopes\LocationFilter;
 use Illuminate\Http\Request;
@@ -39,6 +41,24 @@ class LocationController extends Controller {
 			}
 
 			$createdLocation = Location::create( $this->mutateForCreation( $request->all() ) );
+
+			// ── Auto-create a Manual channel account (if missing) + listing ──
+			// Channel id=1 is always "Manual" (Gen 3 convention)
+			$manualChannel  = Channel::firstOrCreate([]);
+			$channelAccount = ChannelAccount::firstOrCreate(
+				['channel_id' => $manualChannel->id],
+				['description' => 'Manual Bookings', 'channel_id' => $manualChannel->id]
+			);
+
+			$listing = Listing::create([
+				'listing_title'      => $createdLocation->building_name . ' #' . $createdLocation->room_number,
+				'channel_account_id' => $channelAccount->id,
+				'channel_listing_id' => 'manual-' . $createdLocation->id,  // placeholder; updated when OTA is linked
+				'status'             => 'active',
+			]);
+
+			$createdLocation->listings()->save($listing);
+			// ────────────────────────────────────────────────────────────────
 
 			return $this->creationSuccessResponse( 'Location', $createdLocation->id );
 		} else {
@@ -183,13 +203,6 @@ class LocationController extends Controller {
 		$start_date = $request['start_date'];
 		$end_date = $request['end_date'];
 
-		// Not implemented yet. 
-		// Explanation: To determine OVERLAP of bookings, you must use STRICT comparisons (< and >). This will not, however, display items that do not wholely overlap. In most cases, what we mean by "Open Properties" are ones that do not have a booking for that night, so we want CHECKINs to be displayed as well. Our primary use case for this is to have start_date = end_date, to see what properties are occupied that date's NIGHT. (ie: a guest will be there on that date at 8pm or so). With strict comparisons, this case is not caught, and will display a date with checkout and checkin as "Open". While Strict overlapping is good for more stricter contstraints (ie: Catching a possible double-booking), In our usage of this particular API call, we want to see apartments that are available during the daytime and at night.
-		// The switch would be implemented by replacing the following segment of code:
-		// $q->where('checkin',$overlap_switch, $end_date)
-		//
-		// Again, STRICT (<) shows OVERLAP
-		// LENIENT (<=) shows OCCUPIED
 		$switch = true;
 		$overlap_switch = $switch ? '<=' : '<';
 
@@ -202,5 +215,34 @@ class LocationController extends Controller {
 		 return $raw_output->flatten(1)->filter(function($item){return $item instanceof Location;});
 	}
 
+	/**
+	 * Delete a location — blocked if any upcoming bookings exist across its listings.
+	 */
+	public function delete( Location $location ) {
+		if ( Gate::denies( 'update_Location', $location ) ) {
+			return $this->AuthorizationFailureResponse( 'delete', 'Location' );
+		}
+
+		// Check for future bookings across all listings linked to this location
+		$hasUpcoming = $location->listings->flatMap(function ( $listing ) {
+			return $listing->bookings->filter(function ( $booking ) {
+				return $booking->checkout >= now()->toDateString();
+			});
+		})->isNotEmpty();
+
+		if ( $hasUpcoming ) {
+			return response([
+				'message' => 'Cannot delete location: it has upcoming or active bookings.',
+				'success' => false,
+			], 422);
+		}
+
+		$location->delete();
+
+		return response([
+			'message' => 'Location deleted successfully.',
+			'success' => true,
+		], 200);
+	}
 
 }

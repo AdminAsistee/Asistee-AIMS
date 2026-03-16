@@ -6,28 +6,30 @@ import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
 import { useBookings, useCreateBooking, useUpdateBooking, useDeleteBooking } from '../hooks/useBookings';
 import { useLocationOptions } from '../hooks/useLocationOptions';
+import { useClientOptions } from '../hooks/useClientOptions';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Pagination from '../components/ui/Pagination';
 import type { Booking } from '../types';
 
 const bookingSchema = z.object({
-  listing_id: z.number({ coerce: true }).int().min(1, 'Please select a property'),
-  checkin: z.string().min(1, 'Check-in required'),
-  checkout: z.string().min(1, 'Check-out required'),
-  guests: z.number({ coerce: true }).int().min(1).max(1000),
-  beds: z.number({ coerce: true }).int().min(0).optional(),
+  listing_id: z.number().int().min(1, 'Please select a property'),
+  checkin:    z.string().min(1, 'Check-in required'),
+  checkout:   z.string().min(1, 'Check-out required'),
+  guests:     z.number().int().min(1).max(1000),
+  beds:       z.number().int().min(0).optional(),
+  guest_id:   z.string().optional(),   // select sends string; converted in handleCreate
 });
 type BookingForm = z.infer<typeof bookingSchema>;
 
 function BookingFormFields({ register, errors, setValue }: { register: any; errors: any; setValue: any }) {
   const { data: locData, isLoading: locLoading } = useLocationOptions();
+  const { data: clients, isLoading: clientsLoading } = useClientOptions();
   const locations = locData?.data ?? [];
 
   const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const locId = parseInt(e.target.value);
     const loc = locations.find(l => l.id === locId);
-    // Pick the first listing linked to this location
     const listingId = loc?.listings?.[0]?.id ?? 0;
     setValue('listing_id', listingId, { shouldValidate: true });
   };
@@ -36,12 +38,7 @@ function BookingFormFields({ register, errors, setValue }: { register: any; erro
     <div className="space-y-4">
       <div>
         <label htmlFor="location_select" className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-        <select
-          id="location_select"
-          onChange={handleLocationChange}
-          className="input w-full"
-          defaultValue=""
-        >
+        <select id="location_select" onChange={handleLocationChange} className="input w-full" defaultValue="">
           <option value="" disabled>
             {locLoading ? 'Loading properties…' : '— Select a property —'}
           </option>
@@ -52,10 +49,21 @@ function BookingFormFields({ register, errors, setValue }: { register: any; erro
             </option>
           ))}
         </select>
-        {/* Hidden field carries the resolved listing_id */}
         <input type="hidden" {...register('listing_id', { valueAsNumber: true })} />
         {errors.listing_id && <p className="text-xs text-red-500 mt-1">{errors.listing_id.message}</p>}
       </div>
+
+      {/* Guest (client) dropdown */}
+      <div>
+        <label htmlFor="guest_id" className="block text-sm font-medium text-gray-700 mb-1">Guest (Client) <span className="text-gray-400 font-normal">— optional</span></label>
+        <select id="guest_id" {...register('guest_id')} className="input w-full">
+          <option value="">— Unassigned —</option>
+          {!clientsLoading && clients?.map((c: any) => (
+            <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="checkin" className="block text-sm font-medium text-gray-700 mb-1">Check-in</label>
@@ -82,6 +90,7 @@ function BookingFormFields({ register, errors, setValue }: { register: any; erro
     </div>
   );
 }
+
 
 export default function Bookings() {
   const [page, setPage] = useState(1);
@@ -112,7 +121,18 @@ export default function Bookings() {
   const handleCreate = createForm.handleSubmit(async (values) => {
     setApiError('');
     try {
-      await createMutation.mutateAsync(values);
+      const payload: any = {
+        listing_id: values.listing_id,
+        checkin:    values.checkin,
+        checkout:   values.checkout,
+        guests:     values.guests,
+        beds:       values.beds,
+      };
+      // Only include guest_id if a real client was selected
+      if (values.guest_id && values.guest_id !== '') {
+        payload.guest_id = Number(values.guest_id);
+      }
+      await createMutation.mutateAsync(payload);
       createForm.reset();
       setCreateOpen(false);
     } catch (e: any) {

@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format, parseISO } from 'date-fns';
 import { useCleanings, useCreateCleaning, useAssignCleaner, useUnassignCleaner, useCleanerUsers } from '../hooks/useCleanings';
+import { useLocationOptions } from '../hooks/useLocationOptions';
 import Modal from '../components/ui/Modal';
 import Badge from '../components/ui/Badge';
 import Pagination from '../components/ui/Pagination';
@@ -12,12 +13,13 @@ import { useAuthStore } from '../stores/authStore';
 import type { Cleaning } from '../types';
 
 const cleaningSchema = z.object({
-  location_id: z.number({ coerce: true }).int().min(1, 'Location ID required'),
+  location_id:   z.number().int().min(1, 'Location required'),
   cleaning_date: z.string().min(1, 'Cleaning date required'),
-  cleaner_id: z.number({ coerce: true }).int().min(1).optional(),
+  cleaner_id:    z.string().optional(),   // select sends string; converted in onSubmit
 });
 type CleaningForm = z.infer<typeof cleaningSchema>;
 
+// ── Assign Cleaner Modal ────────────────────────────────────────────────────
 function AssignModal({ cleaning, open, onClose }: { cleaning: Cleaning | null; open: boolean; onClose: () => void }) {
   const { data: cleaners } = useCleanerUsers();
   const assign = useAssignCleaner();
@@ -52,6 +54,77 @@ function AssignModal({ cleaning, open, onClose }: { cleaning: Cleaning | null; o
   );
 }
 
+// ── Create Cleaning Form ────────────────────────────────────────────────────
+function CreateCleaningForm({
+  onSubmit, register, errors, apiError, isSubmitting, onClose,
+}: {
+  onSubmit: (e: React.FormEvent) => void;
+  register: any;
+  errors: any;
+  apiError: string;
+  isSubmitting: boolean;
+  onClose: () => void;
+}) {
+  const { data: locData, isLoading: locLoading } = useLocationOptions();
+  const locations = locData?.data ?? [];
+  const { data: cleaners } = useCleanerUsers();
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      {/* Location dropdown */}
+      <div>
+        <label htmlFor="cleaning-location" className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+        <select
+          id="cleaning-location"
+          {...register('location_id', { valueAsNumber: true })}
+          className="input w-full"
+          defaultValue=""
+        >
+          <option value="" disabled>
+            {locLoading ? 'Loading…' : '— Select a property —'}
+          </option>
+          {locations.map(loc => (
+            <option key={loc.id} value={loc.id}>
+              {loc.building_name} #{loc.room_number}
+            </option>
+          ))}
+        </select>
+        {errors.location_id && <p className="text-xs text-red-500 mt-1">{errors.location_id.message}</p>}
+      </div>
+
+      {/* Cleaning Date */}
+      <div>
+        <label htmlFor="cleaning-date" className="block text-sm font-medium text-gray-700 mb-1">Cleaning Date</label>
+        <input id="cleaning-date" {...register('cleaning_date')} type="date" className="input w-full" />
+        {errors.cleaning_date && <p className="text-xs text-red-500 mt-1">{errors.cleaning_date.message}</p>}
+      </div>
+
+      {/* Optional pre-assign cleaner */}
+      <div>
+        <label htmlFor="cleaning-cleaner" className="block text-sm font-medium text-gray-700 mb-1">
+          Assign Cleaner <span className="text-gray-400 font-normal">— optional</span>
+        </label>
+        <select id="cleaning-cleaner" {...register('cleaner_id')} className="input w-full">
+          <option value="">— Unassigned —</option>
+          {cleaners?.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
+
+      <div className="flex justify-end gap-3 pt-1">
+        <button type="button" onClick={onClose} className="btn-secondary">Cancel</button>
+        <button type="submit" disabled={isSubmitting} className="btn-primary">
+          {isSubmitting ? 'Saving…' : 'Create Cleaning'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ── Main Cleanings Page ─────────────────────────────────────────────────────
 export default function Cleanings() {
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -69,7 +142,15 @@ export default function Cleanings() {
   const onSubmit = handleSubmit(async (values) => {
     setApiError('');
     try {
-      await create.mutateAsync(values);
+      const payload: any = {
+        location_id:   values.location_id,
+        cleaning_date: values.cleaning_date,
+      };
+      // Only include cleaner_id if a real value was selected
+      if (values.cleaner_id && values.cleaner_id !== '') {
+        payload.cleaner_id = Number(values.cleaner_id);
+      }
+      await create.mutateAsync(payload);
       reset();
       setCreateOpen(false);
     } catch (e: any) {
@@ -117,8 +198,8 @@ export default function Cleanings() {
                     <Badge variant={c.tf_status ? 'success' : 'default'}>{c.tf_status ? 'TF Day' : 'Normal'}</Badge>
                   </td>
                   <td className="px-5 py-3 text-gray-600">
-                    {c.next_booking && c.next_booking !== false
-                      ? format(parseISO(c.next_booking.checkin), 'MMM d')
+                    {c.next_booking && typeof c.next_booking === 'object' && 'checkin' in c.next_booking
+                      ? format(parseISO((c.next_booking as any).checkin), 'MMM d')
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-5 py-3">
@@ -150,25 +231,14 @@ export default function Cleanings() {
 
       {/* Create Cleaning Modal */}
       <Modal open={createOpen} onClose={() => { setCreateOpen(false); setApiError(''); }} title="New Cleaning">
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Location ID</label>
-            <input {...register('location_id', { valueAsNumber: true })} type="number" min={1} className="input w-full" placeholder="e.g. 1" />
-            {errors.location_id && <p className="text-xs text-red-500 mt-1">{errors.location_id.message}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cleaning Date</label>
-            <input {...register('cleaning_date')} type="date" className="input w-full" />
-            {errors.cleaning_date && <p className="text-xs text-red-500 mt-1">{errors.cleaning_date.message}</p>}
-          </div>
-          {apiError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{apiError}</p>}
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={() => setCreateOpen(false)} className="btn-secondary">Cancel</button>
-            <button type="submit" disabled={create.isPending} className="btn-primary">
-              {create.isPending ? 'Saving…' : 'Create Cleaning'}
-            </button>
-          </div>
-        </form>
+        <CreateCleaningForm
+          onSubmit={onSubmit}
+          register={register}
+          errors={errors}
+          apiError={apiError}
+          isSubmitting={create.isPending}
+          onClose={() => setCreateOpen(false)}
+        />
       </Modal>
 
       <AssignModal cleaning={assignCleaning} open={!!assignCleaning} onClose={() => setAssignCleaning(null)} />

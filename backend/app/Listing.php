@@ -46,6 +46,7 @@ class Listing extends Model {
 	protected $fillable = [
 		'channel_account_id',
 		'channel_listing_id',
+		'listing_title',
 		'status',
 	];
 	public static $field_status = [ 'newly_created', 'active', 'suspended', 'discontinued' ];

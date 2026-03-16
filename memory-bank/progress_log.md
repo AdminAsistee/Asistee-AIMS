@@ -91,3 +91,59 @@
 - Cleaned all test data from DB (8 tables truncated, 2 user accounts preserved).
 - **Git commit**: `3e75d7a` — `feat: Phase 3 — module pages + QA E2E suite` — pushed to `origin/main`.
 - **Files added**: `frontend/e2e/helpers.ts`, `frontend/e2e/bookings.spec.ts`, `frontend/e2e/cleanings.spec.ts`, `frontend/e2e/locations.spec.ts`, `frontend/e2e/supplies.spec.ts`, `frontend/e2e/users-profile.spec.ts`, `frontend/QA_STATUS.md`.
+
+---
+
+## 2026-03-16 12:34 (JST) — Manual QA Bug Fixes + Data Cleanup + GitHub Push
+- **Bug**: `app/User.php` still used `Laravel\Passport\HasApiTokens` → replaced with `Laravel\Sanctum\HasApiTokens`. Fixed all module endpoints that eager-load User relations (locations.owner, cleaning.cleaner, etc.) crashing with 500.
+- **Bug**: `App\Models\User::locations()` used bare `Location::class` → resolved to `App\Models\Location` (doesn't exist). Fixed to `\App\Location::class`.
+- **Bug**: `cleaner` Gate allowed `administrator` type → `CleaningFilter` added `WHERE cleaner_id=admin_id` for admins, returning 0 cleanings. Fixed: gate now only matches `type === 'cleaner'`.
+- **Bug**: `CleaningController` had unused `use Laravel\Passport\Passport` import — removed.
+- **Enhancement**: `LocationController::index()` now eager-loads `listings` relation for Booking form dropdown.
+- **Enhancement**: `Bookings.tsx` — replaced raw Listing ID number input with Location dropdown (auto-resolves `listing_id`). New hook `useLocationOptions.ts` added.
+- **Data seeded during QA**: channel_account (Manual Bookings), listing (Noa Dogenzaka), location, booking, 2 cleanings, 1 supply — all cleared after testing.
+- **DB state**: clean — only `tech@asistee.com` (administrator) + `alexa@asistee.com` (client) remain.
+- **Git commit**: `b54a96b` — `fix: resolve critical runtime bugs found during manual QA` — pushed to `origin/main`.
+- **Files affected**: `backend/app/User.php`, `backend/app/Models/User.php`, `backend/app/Providers/AppServiceProvider.php`, `backend/app/Http/Controllers/CleaningController.php`, `backend/app/Http/Controllers/LocationController.php`, `frontend/src/pages/Bookings.tsx`, `frontend/src/hooks/useLocationOptions.ts`.
+
+---
+
+## 2026-03-16 12:57 (JST) — Gen 3 Feature Parity Audit
+- Full side-by-side audit of `backend-legacy/` + `frontend-legacy/` vs current `backend/` + `frontend/`.
+- **Backend**: 100% complete — 70 routes migrated, 15 models migrated, all controller methods present.
+- **Frontend gaps discovered** (new, not in previous Phase 4 plan):
+  - `/bookings/:id` Booking detail page entirely missing (Gen 3: `BookingSingle.js` — editable dates, related location/cleaning panels).
+  - `/cleanings/:id` Cleaning detail page entirely missing (Gen 3: `CleaningSingle.js` — supply request panel, fulfill/deliver workflow, next booking info).
+  - Location drawer missing property calendar + associated cleanings/bookings tables (Gen 3: `LocationSingle.js`).
+  - Cleaner Dashboard widgets missing (`TodayCleanings.js` + `UnassignedCleanings.js`).
+  - Password Reset frontend missing — backend routes exist (`/request-password-reset`, `/reset-password`), no frontend pages.
+- **4 backend stubs unimplemented**: `NoteController`, `FeedbackController`, `ExtraServiceController`, `ChannelAccountController`.
+- Updated `future_roadmap.md` and `active_context.md` with all newly discovered gaps.
+- **Files affected**: `memory-bank/future_roadmap.md`, `memory-bank/active_context.md`, `memory-bank/progress_log.md`.
+
+---
+
+## 2026-03-16 13:20 (JST) — Phase 4A Quick Wins (coded, pending test)
+- **5 Quick Win features implemented** (not yet committed — awaiting browser test):
+  1. **Add User modal** — `UserController::adminCreate()` + `POST /users/admin-create` route + `AddUserModal` component in `Users.tsx` with Zod validation for name/email/password/role.
+  2. **Location → Listing auto-create** — `LocationController::create()` now calls `ChannelAccount::firstOrCreate(channel=manual)` then `Listing::create()` and links it to the new location. No more manual DB seeding needed.
+  3. **Booking guest_id** — New `useClientOptions.ts` hook fetches client-role users; guest dropdown added to `BookingFormFields` in `Bookings.tsx`.
+  4. **Cleaning form: Location dropdown** — `Cleanings.tsx` fully rewritten: raw Location ID input replaced with `useLocationOptions` dropdown; optional Cleaner pre-assignment dropdown also added.
+  5. **Cleaner Dashboard widgets** — `Dashboard.tsx` rebuilt with role-aware layout: cleaners see `TodayCleaningsWidget` + `UnassignedCleaningsWidget` with Assign Me buttons; admins see KPI cards + Recent Bookings + Unassigned panel.
+- **New hooks added**: `useCreateUser`, `useAssignMe` (in `useCleanings.ts`), `useClientOptions`.
+- **Files affected**: `backend/app/Http/Controllers/UserController.php`, `backend/app/Http/Controllers/LocationController.php`, `backend/routes/api.php`, `frontend/src/pages/Users.tsx`, `frontend/src/pages/Bookings.tsx`, `frontend/src/pages/Cleanings.tsx`, `frontend/src/pages/Dashboard.tsx`, `frontend/src/hooks/useUsers.ts`, `frontend/src/hooks/useCleanings.ts`, `frontend/src/hooks/useClientOptions.ts`.
+
+---
+
+## 2026-03-16 13:31 (JST) — Channel Manager Architecture Decision
+- **Decision**: Channel Manager and iCal sync will live inside **Location detail view**, not as a separate page.
+- **Data model clarified**:
+  - `ChannelAccount` — holds OTA credentials (API token, channel type: manual/airbnb/booking_com)
+  - `Listing` — bridge between Location and Channel (holds `channel_listing_id`, `status`, belongs to ChannelAccount)
+  - `Location` — physical property, belongs to many Listings (can be on multiple OTAs)
+- **Two onboarding flows defined**:
+  - **Flow A (Location-first)**: Register Location → Manual listing auto-created → Later "Connect OTA" on listing → links channel_listing_id → Sync
+  - **Flow B (OTA-first)**: Connect Channel Account → pull OTA property list → select → auto-creates Location + Listing
+- Channel Accounts accessible from: Location detail drawer AND global Settings page.
+- iCal URL stored per listing; "Sync Now" button calls `ChannelController::pullCleanings()` (`johngrogg/ics-parser` already installed).
+- **Files affected**: `memory-bank/future_roadmap.md`, `memory-bank/active_context.md`, `memory-bank/progress_log.md`.

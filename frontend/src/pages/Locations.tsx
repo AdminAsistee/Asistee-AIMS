@@ -1,29 +1,39 @@
 import { useState, useRef } from 'react';
-import { Plus, MapPin, Upload, ChevronRight, X } from 'lucide-react';
+import { Plus, MapPin, Upload, ChevronRight, X, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useLocations, useCreateLocation, useUploadPhoto } from '../hooks/useLocations';
+import { useLocations, useCreateLocation, useUploadPhoto, useDeleteLocation } from '../hooks/useLocations';
 import Modal from '../components/ui/Modal';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Pagination from '../components/ui/Pagination';
 import { useAuthStore } from '../stores/authStore';
 import type { Location } from '../types';
 
 const locationSchema = z.object({
   building_name: z.string().min(2, 'Name must be at least 2 characters'),
-  room_number: z.number({ coerce: true }).int().min(0),
-  address: z.string().min(1, 'Address required'),
-  latitude: z.number({ coerce: true }).min(-90).max(90),
-  longitude: z.number({ coerce: true }).min(0).max(180),
-  owner_id: z.number({ coerce: true }).int().min(1, 'Owner ID required'),
-  map_link: z.string().min(1, 'Map link required'),
-  entry_info: z.string().min(1, 'Entry info required'),
+  room_number:   z.number().int().min(0),
+  address:       z.string().min(1, 'Address required'),
+  latitude:      z.number().min(-90).max(90),
+  longitude:     z.number().min(0).max(180),
+  owner_id:      z.number().int().min(1, 'Owner ID required'),
+  map_link:      z.string().min(1, 'Map link required'),
+  entry_info:    z.string().min(1, 'Entry info required'),
 });
+
 type LocationForm = z.infer<typeof locationSchema>;
 
-function LocationDrawer({ location, onClose }: { location: Location | null; onClose: () => void }) {
+function LocationDrawer({
+  location, onClose, onDelete, isAdmin,
+}: {
+  location: Location | null;
+  onClose: () => void;
+  onDelete: (id: number) => void;
+  isAdmin: boolean;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const upload = useUploadPhoto();
+  const [deleteError, setDeleteError] = useState('');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,11 +95,30 @@ function LocationDrawer({ location, onClose }: { location: Location | null; onCl
               <div className="space-y-1.5">
                 {location.listings.map(l => (
                   <div key={l.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                    <span className="text-gray-700">Listing #{l.id}</span>
+                    <span className="text-gray-700">{(l as any).listing_title ?? `Listing #${l.id}`}</span>
                     <span className="text-gray-400">{l.bookings?.length ?? 0} bookings</span>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Delete Section — admin only */}
+          {isAdmin && (
+            <div className="pt-4 border-t border-gray-100">
+              {deleteError && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{deleteError}</p>
+              )}
+              <button
+                onClick={() => {
+                  setDeleteError('');
+                  onDelete(location.id);
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+              >
+                <Trash2 size={15} /> Delete Location
+              </button>
+              <p className="text-xs text-gray-400 text-center mt-2">Blocked if upcoming bookings exist</p>
             </div>
           )}
         </div>
@@ -106,8 +135,11 @@ export default function Locations() {
 
   const { data, isLoading } = useLocations(page);
   const create = useCreateLocation();
+  const deleteMutation = useDeleteLocation();
   const { user } = useAuthStore();
   const isAdmin = user?.type === 'administrator' || user?.type === 'supervisor';
+  const [deleteError, setDeleteError] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<LocationForm>({ resolver: zodResolver(locationSchema) });
 
@@ -121,6 +153,17 @@ export default function Locations() {
       setApiError(e?.response?.data?.message ?? 'Failed to create location.');
     }
   });
+
+  const handleDelete = async (id: number) => {
+    setDeleteError('');
+    try {
+      await deleteMutation.mutateAsync(id);
+      setSelected(null);
+      setConfirmDeleteId(null);
+    } catch (e: any) {
+      setDeleteError(e?.response?.data?.message ?? 'Failed to delete location.');
+    }
+  };
 
   return (
     <div>
@@ -224,7 +267,25 @@ export default function Locations() {
         </form>
       </Modal>
 
-      <LocationDrawer location={selected} onClose={() => setSelected(null)} />
+      <LocationDrawer
+        location={selected}
+        onClose={() => { setSelected(null); setDeleteError(''); }}
+        onDelete={(id) => setConfirmDeleteId(id)}
+        isAdmin={isAdmin}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        title="Delete Location"
+        message={
+          deleteError
+            ? deleteError
+            : `Delete this location? This cannot be undone. Blocked if upcoming bookings exist.`
+        }
+        loading={deleteMutation.isPending}
+      />
     </div>
   );
 }

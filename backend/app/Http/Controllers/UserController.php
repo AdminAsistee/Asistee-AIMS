@@ -13,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -27,6 +28,19 @@ class UserController extends Controller
         'email'    => 'email|unique:users,email',
         'password' => 'min:6|max:64',
     ];
+
+    /**
+     * Returns a Rule that checks email uniqueness only against NON-deleted users.
+     * This allows re-using an email that belonged to a soft-deleted user.
+     */
+    protected function uniqueEmailRule(?int $ignoreId = null): Rule
+    {
+        $rule = Rule::unique('users', 'email')->whereNull('deleted_at');
+        if ($ignoreId) {
+            $rule = $rule->ignore($ignoreId);
+        }
+        return $rule;
+    }
 
     protected array $validationRulesForPasswordResetRequest = [
         'email' => 'required|exists:users,email',
@@ -100,6 +114,27 @@ class UserController extends Controller
         return $request;
     }
 
+    // ─── Admin Create (admin creates user with explicit role) ─────────────────
+    public function adminCreate(Request $request): mixed
+    {
+        $rules = $this->validationRulesForCreation;
+        $rules['type'] = 'required|in:' . implode(',', User::$types);
+
+        if ($this->validationFails($request->all(), $rules)) {
+            return $this->validationResponse;
+        }
+
+        $data             = $request->only(['name', 'email', 'password', 'type']);
+        $data['password'] = bcrypt($data['password']);
+
+        $user = User::create($data);
+
+        return response()->json([
+            'message' => 'User Created!',
+            'user'    => $user,
+        ], 201);
+    }
+
     // ─── Logout ───────────────────────────────────────────────────────────────
     public function logout(Request $request): \Illuminate\Http\JsonResponse
     {
@@ -152,7 +187,7 @@ class UserController extends Controller
         if ($this->validationFails(['id' => $user->id], $this->validationRulesForDeletion)) {
             return $this->validationResponse;
         }
-        $user->delete();
+        $user->forceDelete(); // permanent — frees email immediately for re-use
         return $this->deleteSuccessResponse('User');
     }
 
