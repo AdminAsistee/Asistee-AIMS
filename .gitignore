@@ -26,3 +26,6 @@ frontend-legacy/
 frontend/dist/
 frontend/.env
 
+# Memory Bank (local dev notes only)
+memory-bank/
+
