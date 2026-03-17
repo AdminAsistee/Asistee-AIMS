@@ -73,6 +73,7 @@ class Booking extends Model
 
 	protected $fillable = [
 		'listing_id',
+		'source_channel_account_id',
 		'checkin',
 		'checkout',
 		'planned_checkin_time',
@@ -116,6 +117,14 @@ class Booking extends Model
     public function price()
     {
         return $this->belongsTo(Price::class);
+    }
+
+    /**
+     * The channel account that sourced this booking (null = manually created).
+     */
+    public function source_channel_account()
+    {
+        return $this->belongsTo(\App\ChannelAccount::class, 'source_channel_account_id');
     }
 
     public static function overlaps(Listing $listing,$checkin,$checkout){

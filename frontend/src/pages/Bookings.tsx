@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wifi } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -186,7 +186,7 @@ export default function Bookings() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-gray-50/70 border-b border-gray-100">
-                {['#', 'Listing', 'Check-in', 'Check-out', 'Guests', 'Beds', ''].map(h => (
+                {['#', 'Listing', 'Source', 'Check-in', 'Check-out', 'Guests', 'Beds', ''].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -210,6 +210,16 @@ export default function Bookings() {
                 >
                   <td className="px-5 py-3 text-gray-400 font-mono text-xs">{b.id}</td>
                   <td className="px-5 py-3 text-gray-700 font-medium">#{b.listing_id}</td>
+                  <td className="px-5 py-3">
+                    {(() => {
+                      // Use the booking's own source_channel_account (null = manually created)
+                      const src = (b as any).source_channel_account;
+                      if (!src) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Manual</span>;
+                      if (src.channel_id === 2) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-600"><Wifi size={10}/>iCal</span>;
+                      if (src.channel_id === 1) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-pink-50 text-pink-600">Airbnb</span>;
+                      return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">OTA</span>;
+                    })()}
+                  </td>
                   <td className="px-5 py-3 text-gray-700">{format(parseISO(b.checkin), 'MMM d, yyyy')}</td>
                   <td className="px-5 py-3 text-gray-700">{format(parseISO(b.checkout), 'MMM d, yyyy')}</td>
                   <td className="px-5 py-3 text-gray-700">{b.guests}</td>
@@ -227,7 +237,7 @@ export default function Bookings() {
                 </tr>
               ))}
               {!isLoading && !data?.data?.length && (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-400">No bookings found.</td></tr>
+                <tr><td colSpan={8} className="px-5 py-10 text-center text-gray-400">No bookings found.</td></tr>
               )}
             </tbody>
           </table>

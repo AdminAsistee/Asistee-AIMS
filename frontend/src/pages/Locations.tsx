@@ -1,12 +1,15 @@
 import { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, MapPin, Upload, ChevronRight, X, Trash2, Link2, RefreshCw, Wifi, ChevronLeft, ZoomIn } from 'lucide-react';
+import { Plus, MapPin, Upload, ChevronRight, X, Trash2, Link2, RefreshCw, Wifi, ChevronLeft, ZoomIn, CheckCircle, AlertTriangle } from 'lucide-react';
 import { getPhotoUrl } from '../lib/photoUrl';
+import { useCreateChannelAccount, useSyncListing } from '../hooks/useChannelAccounts';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, parseISO, isWithinInterval, isSameDay } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useLocations, useLocationDetail, useCreateLocation, useUploadPhoto, useUpdateLocation, useDeleteLocation, useDeletePhoto } from '../hooks/useLocations';
+import { useQueryClient } from '@tanstack/react-query';
+import api from '../lib/api';
 import Modal from '../components/ui/Modal';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
 import Pagination from '../components/ui/Pagination';
@@ -58,7 +61,63 @@ function ListingStatusBadge({ status }: { status?: string }) {
   );
 }
 
-function ListingsTab({ listings, isAdmin }: { listings: Listing[]; isAdmin: boolean }) {
+function ListingsTab({ listings, isAdmin, selectedLocationId }: { listings: Listing[]; isAdmin: boolean; selectedLocationId: number | null }) {
+  const queryClient = useQueryClient();
+  // Per-listing state: sync results and iCal URL form
+  const [syncResults, setSyncResults] = useState<Record<number, string>>({});
+  const [syncing, setSyncing] = useState<Record<number, boolean>>({});
+  const [icalForms, setIcalForms] = useState<Record<number, { open: boolean; url: string }>>({});
+  const [icalSaving, setIcalSaving] = useState<Record<number, boolean>>({});
+  const [icalDeletePrompt, setIcalDeletePrompt] = useState<number | null>(null); // listingId pending delete
+  const createAccount = useCreateChannelAccount();
+  const syncListing = useSyncListing();
+
+  async function handleSync(listingId: number) {
+    setSyncing((s) => ({ ...s, [listingId]: true }));
+    setSyncResults((r) => ({ ...r, [listingId]: '' }));
+    try {
+      const res = await syncListing.mutateAsync(listingId);
+      if (res.error) {
+        setSyncResults((r) => ({ ...r, [listingId]: `⚠️ ${res.error}` }));
+      } else {
+        setSyncResults((r) => ({
+          ...r,
+          [listingId]: `✅ ${res.created_bookings} new booking(s), ${res.created_cleanings} new cleaning(s)`,
+        }));
+      }
+    } catch {
+      setSyncResults((r) => ({ ...r, [listingId]: '⚠️ Sync failed — check backend logs.' }));
+    } finally {
+      setSyncing((s) => ({ ...s, [listingId]: false }));
+    }
+  }
+
+  async function handleAddIcal(listingId: number) {
+    const url = icalForms[listingId]?.url ?? '';
+    if (!url) return;
+    setIcalSaving((s) => ({ ...s, [listingId]: true }));
+    try {
+      const newAccount = await createAccount.mutateAsync({
+        description: `iCal — Listing #${listingId}`,
+        channel_id: 2,
+        authentication_token: url,
+      });
+      // Link the new channel account to this listing
+      await api.patch(`/api/v1/listings/${listingId}`, {
+        channel_account_id: newAccount.id,
+      });
+      // Refresh the location detail so Sync Now button appears
+      queryClient.invalidateQueries({ queryKey: ['locations', 'detail', selectedLocationId] });
+      queryClient.invalidateQueries({ queryKey: ['locations'] });
+      setIcalForms((f) => ({ ...f, [listingId]: { open: false, url: '' } }));
+      setSyncResults((r) => ({ ...r, [listingId]: '✅ iCal connected! Click Sync Now to import bookings.' }));
+    } catch {
+      setSyncResults((r) => ({ ...r, [listingId]: '⚠️ Failed to save iCal URL.' }));
+    } finally {
+      setIcalSaving((s) => ({ ...s, [listingId]: false }));
+    }
+  }
+
   if (!listings.length) {
     return (
       <div className="text-center py-10 text-gray-400">
@@ -75,8 +134,12 @@ function ListingsTab({ listings, isAdmin }: { listings: Listing[]; isAdmin: bool
     <div className="space-y-3">
       {listings.map((listing) => {
         const channel = (listing as any).channel_account?.channel ?? 'manual';
-        const channelLabel = CHANNEL_LABELS[channel] ?? channel;
+        const channelAccountId = listing.channel_account_id;
+        const hasIcal = channelAccountId != null && (listing.channel_account as any)?.channel_id === 2;
+        const channelLabel = CHANNEL_LABELS[channel] ?? (channelAccountId ? 'OTA' : 'Manual');
         const channelColor = CHANNEL_COLORS[channel] ?? CHANNEL_COLORS.manual;
+        const syncResult = syncResults[listing.id];
+        const isIcalFormOpen = icalForms[listing.id]?.open ?? false;
 
         return (
           <div key={listing.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
@@ -100,36 +163,127 @@ function ListingsTab({ listings, isAdmin }: { listings: Listing[]; isAdmin: bool
             </div>
 
             {/* Booking count */}
-            <p className="text-xs text-gray-400 mb-3">
+            <p className="text-xs text-gray-400 mb-1">
               {listing.bookings?.length ?? 0} booking{(listing.bookings?.length ?? 0) !== 1 ? 's' : ''} linked
             </p>
+
+            {/* iCal URL display */}
+            {hasIcal && (listing.channel_account as any)?.ical_url && (
+              <div className="flex items-center gap-1.5 mb-3 group">
+                <Wifi size={11} className="text-indigo-400 flex-shrink-0" />
+                <p className="text-xs text-indigo-500 font-mono truncate flex-1" title={(listing.channel_account as any).ical_url}>
+                  {(listing.channel_account as any).ical_url}
+                </p>
+                <button
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
+                  title="Remove iCal URL"
+                  onClick={() => setIcalDeletePrompt(listing.id)}
+                >
+                  <Trash2 size={11} />
+                </button>
+              </div>
+            )}
+
+            {/* iCal delete confirmation — two-choice inline panel */}
+            {icalDeletePrompt === listing.id && (
+              <div className="mb-3 border border-red-100 rounded-xl bg-red-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-red-700 mb-2">Also delete bookings synced from this iCal?</p>
+                <p className="text-xs text-red-500 mb-3">Manually created bookings will always be kept.</p>
+                <div className="flex gap-2">
+                  <button
+                    className="flex-1 text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium transition-colors"
+                    onClick={async () => {
+                      await api.patch(`/api/v1/listings/${listing.id}`, { channel_account_id: null, delete_bookings: true });
+                      queryClient.invalidateQueries({ queryKey: ['locations', 'detail', selectedLocationId] });
+                      queryClient.invalidateQueries({ queryKey: ['locations'] });
+                      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+                      setSyncResults((r) => ({ ...r, [listing.id]: '' }));
+                      setIcalDeletePrompt(null);
+                    }}
+                  >Yes, delete iCal bookings</button>
+                  <button
+                    className="flex-1 text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium transition-colors"
+                    onClick={async () => {
+                      await api.patch(`/api/v1/listings/${listing.id}`, { channel_account_id: null, delete_bookings: false });
+                      queryClient.invalidateQueries({ queryKey: ['locations', 'detail', selectedLocationId] });
+                      queryClient.invalidateQueries({ queryKey: ['locations'] });
+                      setSyncResults((r) => ({ ...r, [listing.id]: '' }));
+                      setIcalDeletePrompt(null);
+                    }}
+                  >No, keep bookings</button>
+                </div>
+              </div>
+            )}
+
+            {/* Sync result toast */}
+            {syncResult && (
+              <div className={`text-xs rounded-lg px-3 py-2 mb-2 flex items-center gap-1.5 ${
+                syncResult.startsWith('✅') ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+              }`}>
+                {syncResult.startsWith('✅')
+                  ? <CheckCircle size={12} />
+                  : <AlertTriangle size={12} />}
+                {syncResult.replace(/^[✅⚠️]\s*/, '')}
+              </div>
+            )}
+
+            {/* iCal URL inline form */}
+            {isIcalFormOpen && (
+              <div className="mb-3 flex gap-2">
+                <input
+                  type="url"
+                  className="flex-1 border rounded-lg px-3 py-1.5 text-xs font-mono focus:ring-2 focus:ring-indigo-300 outline-none"
+                  placeholder="https://www.airbnb.com/calendar/ical/…"
+                  value={icalForms[listing.id]?.url ?? ''}
+                  onChange={(e) => setIcalForms((f) => ({ ...f, [listing.id]: { open: true, url: e.target.value } }))}
+                />
+                <button
+                  onClick={() => handleAddIcal(listing.id)}
+                  disabled={icalSaving[listing.id]}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 font-medium"
+                >
+                  {icalSaving[listing.id] ? '…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setIcalForms((f) => ({ ...f, [listing.id]: { open: false, url: '' } }))}
+                  className="text-xs px-2 py-1.5 rounded-lg border text-gray-500 hover:bg-gray-100"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Action buttons */}
             {isAdmin && (
               <div className="flex gap-2 flex-wrap">
-                {channel === 'manual' ? (
+                {hasIcal ? (
+                  // iCal listing — show Sync Now
                   <button
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-primary-200 text-primary-600 hover:bg-primary-50 transition-colors font-medium"
-                    title="Connect this listing to an OTA channel account"
-                    onClick={() => alert('Channel Account management coming in Phase 4 Large Effort')}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors font-medium disabled:opacity-50"
+                    title="Sync bookings and cleanings from this iCal listing"
+                    onClick={() => handleSync(listing.id)}
+                    disabled={syncing[listing.id]}
+                  >
+                    <RefreshCw size={12} className={syncing[listing.id] ? 'animate-spin' : ''} />
+                    {syncing[listing.id] ? 'Syncing…' : 'Sync Now'}
+                  </button>
+                ) : (
+                  // Manual listing — no OTA linked yet, use Add iCal URL instead
+                  <button
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed font-medium"
+                    title="Use 'Add iCal URL' below to connect an iCal feed, or contact support for full OTA API integration"
+                    disabled
                   >
                     <Link2 size={12} /> Connect OTA
                   </button>
-                ) : (
-                  <button
-                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50 transition-colors font-medium"
-                    title="Sync bookings and cleanings from this OTA listing"
-                    onClick={() => alert('iCal sync coming in Phase 4 Large Effort')}
-                  >
-                    <RefreshCw size={12} /> Sync Now
-                  </button>
                 )}
+                {/* Always show Add iCal URL for any listing */}
                 <button
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 transition-colors font-medium"
                   title="Add or update iCal URL for this listing"
-                  onClick={() => alert('iCal URL management coming in Phase 4 Large Effort')}
+                  onClick={() => setIcalForms((f) => ({ ...f, [listing.id]: { open: !isIcalFormOpen, url: '' } }))}
                 >
-                  <Wifi size={12} /> Add iCal URL
+                  <Wifi size={12} /> {isIcalFormOpen ? 'Cancel iCal' : 'Add iCal URL'}
                 </button>
               </div>
             )}
@@ -615,7 +769,7 @@ function LocationDrawer({
 
           {/* LISTINGS TAB */}
           {!loading && activeTab === 'listings' && (
-            <ListingsTab listings={listings} isAdmin={isAdmin} />
+            <ListingsTab listings={listings} isAdmin={isAdmin} selectedLocationId={location.id} />
           )}
 
           {/* CALENDAR TAB */}

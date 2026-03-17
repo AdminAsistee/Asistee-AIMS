@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Channels\ChannelAbstract;
+use App\Channels\ChannelProcessor;
 use GuzzleHttp\Client;
 use Illuminate\Contracts\Encryption\DecryptException;
 use App\Listing;
@@ -112,5 +113,84 @@ return false;
 	],200);
 	}
 
+
+	/**
+	 * Sync a single listing's iCal bookings into the database.
+	 * The listing's channel_account.authentication_token holds the iCal URL (stored encrypted).
+	 * channel_id 2 = iCal
+	 */
+	public function syncListing(Request $request, Listing $listing)
+	{
+		$listing->load('channel_account', 'locations');
+
+		if (!$listing->channel_account) {
+			return response()->json(['error' => 'Listing has no channel account linked.'], 422);
+		}
+
+		// Decrypt the token (which stores the iCal URL for channel_id 2)
+		try {
+			$icalUrl = decrypt($listing->channel_account->authentication_token);
+		} catch (DecryptException $e) {
+			// If not encrypted (manually typed URL), use as-is
+			$icalUrl = $listing->channel_account->authentication_token;
+		}
+
+		if (empty($icalUrl)) {
+			return response()->json(['error' => 'No iCal URL configured for this channel account.'], 422);
+		}
+
+		$channelObject = ChannelAbstract::getChannelObject($listing->channel_account->channel_id);
+
+		if (!$channelObject) {
+			return response()->json(['error' => 'Unsupported channel type (channel_id must be 1 or 2).'], 422);
+		}
+
+		try {
+			$today  = date('Y-m-d');
+			$future = date('Y-m-d', strtotime('+90 days'));
+			$client = new Client(['timeout' => 15, 'verify' => false]);
+
+			$processed = $channelObject->process($icalUrl, $today, $future, $icalUrl, $client);
+
+			if (!$processed) {
+				$err = $channelObject->getError();
+				return response()->json([
+					'error'        => 'iCal fetch/parse failed — check the URL is a valid .ics feed.',
+					'error_detail' => $err,
+					'listing'      => $listing->id,
+				], 200);
+			}
+
+			$bookings = $channelObject->getBookings();
+
+			if (empty($bookings)) {
+				return response()->json([
+					'message'           => 'iCal synced — no bookings found in the next 90 days.',
+					'listing'           => $listing->id,
+					'created_bookings'  => 0,
+					'updated_bookings'  => 0,
+					'created_cleanings' => 0,
+				], 200);
+			}
+
+			$processor = new ChannelProcessor();
+			$result    = $processor->updateListingFromPull($bookings, $listing, $today, $future);
+
+			return response()->json([
+				'message'           => 'iCal sync complete.',
+				'listing'           => $listing->id,
+				'created_bookings'  => count($result['created_bookings']),
+				'updated_bookings'  => count($result['updated_bookings']),
+				'created_cleanings' => count($result['created_cleanings']),
+				'updated_cleanings' => count($result['updated_cleanings']),
+			], 200);
+
+		} catch (\Exception $e) {
+			return response()->json([
+				'error'        => 'Sync error: ' . $e->getMessage(),
+				'listing'      => $listing->id,
+			], 200); // 200 so frontend can read the error field
+		}
+	}
 
 }

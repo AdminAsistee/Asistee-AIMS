@@ -11,6 +11,7 @@ use App\Http\Controllers\SupplyController;
 use App\Http\Controllers\SuppliesTransactionController;
 use App\Http\Controllers\PriceController;
 use App\Http\Controllers\ChannelController;
+use App\Http\Controllers\ChannelAccountController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\FeedbackController;
 
@@ -71,6 +72,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/listings/{listing}',    [ListingController::class, 'show']);
         Route::post('/listings/create',      [ListingController::class, 'register']);
         Route::post('/listings/addLocation', [ListingController::class, 'addLocation']);
+        Route::patch('/listings/{listing}',  [ListingController::class, 'update']);
 
         // — Locations
         Route::get('/locations/open',        [LocationController::class, 'getOpenProperties']);
@@ -113,6 +115,14 @@ Route::prefix('v1')->group(function () {
         // — Channel (admin only)
         Route::get('/channel/cleanings',     [ChannelController::class, 'pullCleanings']);
         Route::get('/channel/{listing}',     [ChannelController::class, 'index']);
+        Route::post('/channel-sync/{listing}', [ChannelController::class, 'syncListing']);
+
+        // — Channel Accounts (admin only)
+        Route::get('/channel-accounts',                      [ChannelAccountController::class, 'index']);
+        Route::post('/channel-accounts',                     [ChannelAccountController::class, 'store']);
+        Route::get('/channel-accounts/{channelAccount}',     [ChannelAccountController::class, 'show']);
+        Route::put('/channel-accounts/{channelAccount}',     [ChannelAccountController::class, 'update']);
+        Route::delete('/channel-accounts/{channelAccount}',  [ChannelAccountController::class, 'destroy']);
 
         // — Notes & Feedback
         Route::apiResource('/notes',         NoteController::class);

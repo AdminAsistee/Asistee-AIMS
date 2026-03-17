@@ -85,4 +85,49 @@ class ListingController extends Controller {
 
 		return $this->associationResponse( 'Listing/' . $listing_id, 'Location/' . $location_id, $success, $message );
 	}
+
+	/**
+	 * Update a listing's channel account link and other patchable fields.
+	 * Accepts optional delete_bookings=true to purge iCal-sourced bookings
+	 * when unlinking a channel account.
+	 */
+	public function update( Request $request, Listing $listing ) {
+		$data = $request->validate([
+			'channel_account_id' => 'sometimes|nullable|integer',
+			'listing_title'      => 'nullable|string|max:255',
+			'channel_listing_id' => 'nullable|string|max:255',
+			'status'             => 'nullable|in:newly_created,active,suspended,discontinued',
+		]);
+
+		$deleteBookings    = $request->boolean('delete_bookings', false);
+		$oldChannelAccount = $listing->channel_account_id;
+
+		// Force null through even when key is present with null value
+		if (array_key_exists('channel_account_id', $data)) {
+			$listing->channel_account_id = $data['channel_account_id'];
+			unset($data['channel_account_id']);
+		}
+		$listing->update($data);
+		$listing->save();
+
+		// If unlinking (setting to null) and delete_bookings requested,
+		// delete only iCal-sourced bookings (source_channel_account_id matches old account).
+		// Manually created bookings (source_channel_account_id = null) are preserved.
+		if ($deleteBookings && is_null($listing->channel_account_id) && $oldChannelAccount) {
+			\App\Booking::where('listing_id', $listing->id)
+				->where(function ($q) use ($oldChannelAccount) {
+					// Post-migration: stamped with source_channel_account_id
+					$q->where('source_channel_account_id', $oldChannelAccount)
+					  // Pre-migration: synced bookings always have a confirmation_code;
+					  // manually created bookings via the UI never do.
+					  ->orWhere(function ($q2) {
+					  	$q2->whereNull('source_channel_account_id')
+					  	   ->whereNotNull('confirmation_code');
+					  });
+				})
+				->delete();
+		}
+
+		return response()->json($listing->fresh()->load('channel_account'), 200);
+	}
 }

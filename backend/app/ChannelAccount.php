@@ -61,8 +61,19 @@ class ChannelAccount extends Model
         return $this->hasMany(Listing::class);
     }
 
-    // public function channel()
-    // {
-    //     return $this->belongsTo(Listing::class);
-    // }
+    /**
+     * Safely decrypt and expose the iCal URL for frontend display.
+     * Appended as `ical_url` in all JSON responses.
+     */
+    public function getIcalUrlAttribute(): ?string
+    {
+        if (empty($this->authentication_token)) return null;
+        try {
+            return decrypt($this->authentication_token);
+        } catch (\Exception $e) {
+            return $this->authentication_token;
+        }
+    }
+
+    protected $appends = ['ical_url'];
 }

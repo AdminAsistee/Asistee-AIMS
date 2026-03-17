@@ -12,7 +12,7 @@ class ChannelProcessor
 	// Takes a channel object that has already been successfully preprocessed, and compares the internal
 	// system with the results of the pre-processed data, noting new bookings, deleted bookings, and
 	// updating items, along with 
-	public function updateListingFromPull($booking_list,$listing,$start_date,$end_date)
+	public function updateListingFromPull($booking_list, $listing, $start_date, $end_date)
 	{
 		// Making this a more pure function right now , could move listing and bookings (already done)
 		// into channel object, and call here to getPulledBookings and getActiveListing
@@ -35,16 +35,20 @@ class ChannelProcessor
 			if($existing_booking->count() == 0) {
 				// DNE , create new booking
 				// create guest account
-				$guest = User::create([
-				'name'=>$current_booking['guest_name'],
-				'type'=>'guest',
-				'email'=>$current_booking['confirmation_code'] . '@gmail.com',
-				'password'=>'ILoveTravel',
-				]); 
+				$guestEmail = $current_booking['confirmation_code'] . '@aims-guest.local';
+				$guest = User::firstOrCreate(
+					['email' => $guestEmail],
+					[
+						'name'     => $current_booking['guest_name'],
+						'type'     => 'guest',
+						'email'    => $guestEmail,
+						'password' => bcrypt('ILoveTravel'),
+					]
+				);
 				// Email Guest if has email. Or send message.
 				// create price object
-				$price = Price::create(['total'=>$current_booking['price'],
-				'description'=>$current_booking['confirmation_code'] . ' ' . $current_booking['guest_name'] . ' booking Payout.']);
+				$price = Price::create(['total' => $current_booking['price'] ?? 0,
+				'description'=> $current_booking['confirmation_code'] . ' ' . $current_booking['guest_name'] . ' booking Payout.']);
 				// if split create split components
 				if(!is_null($listing->default_management_split_rate)){
 					Price::create(['parent_id'=>$price->id,
@@ -63,6 +67,7 @@ class ChannelProcessor
 				// create new booking
 				$booking = Booking::create( [
 					'listing_id'=>$listing->id,
+					'source_channel_account_id'=>$listing->channel_account_id,
 					'confirmation_code'=>$current_booking['confirmation_code'],
 					'checkin' => $current_booking['checkin'],
 					'checkout' => $current_booking['checkout'],
@@ -73,10 +78,10 @@ class ChannelProcessor
 					 ] ) ;
 				// Create Cleanings for all locations for locations on checkout
 				$listing->locations->each(function($location) use ($current_booking, $created_cleanings) {
-					$staff_payout_price = Price::create(['total'=>$location->default_staff_cleaning_payout,
+					$staff_payout_price = Price::create(['total' => $location->default_staff_cleaning_payout ?? 0,
 						'description'=>'Staff payout price for cleaning on [' . $current_booking['checkout'] . '] at [' . $location->room_number . ' ' . $location->building_name . '].',
 					]);
-					$client_charge_price = Price::create(['total'=>$location->default_client_charge,
+					$client_charge_price = Price::create(['total' => $location->default_client_charge ?? 0,
 						'description'=>'Client Charge for cleaning on [' . $current_booking['checkout'] . '] at [' . $location->room_number . ' ' . $location->building_name . '].',
 					]);
 					$cleaning = Cleaning::create( [
@@ -109,12 +114,12 @@ class ChannelProcessor
 								'location_id'=>$location->id,
 								'cleaning_date'=>$current_booking['checkout'],
 								'staff_payout_price_id'=>Price::create([
-									'total'=>$location->default_staff_cleaning_payout,
+									'total' => $location->default_staff_cleaning_payout ?? 0,
 									'percentage'=>false,
 									'description'=>'Staff Payout for ' . $location->room_number . ' ' . $location->building_name . ' on ' . $current_booking['checkout'] . ' via BOOKING(' . $booking->id . ')',
 								]),
 								'client_charge_price_id'=>Price::create([
-									'total'=>$location->default_client_charge,
+									'total' => $location->default_client_charge ?? 0,
 									'percentage'=>false,
 									'description'=>'Staff Payout for ' . $location->room_number . ' ' . $location->building_name . ' on ' . $current_booking['checkout'] . ' via BOOKING(' . $booking->id . ')',
 								]),
@@ -135,7 +140,7 @@ class ChannelProcessor
 				$booking->guests = $current_booking['number_of_guests'];
 				// $booking->beds = $current_booking['number_of_beds']; Do not update beds
 				$price = $booking->price;
-				$price->total = $current_booking['price'];
+				$price->total = $current_booking['price'] ?? 0;
 				$price->save();
 				$booking->save();
 

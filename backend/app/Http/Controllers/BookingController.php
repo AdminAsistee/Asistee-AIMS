@@ -83,7 +83,7 @@ class BookingController extends Controller {
 	 * @return \Illuminate\Contracts\Routing\ResponseFactory|\Symfony\Component\HttpFoundation\Response
 	 */
 	public function index( BookingFilter $filter ) {
-		$bookings = Booking::with( 'listing.locations' )->filter( $filter )
+		$bookings = Booking::with( ['listing.locations', 'listing.channel_account', 'source_channel_account'] )->filter( $filter )
 		                   ->orderBy( 'checkin', 'asc' )//->count();
 		                   ->paginate( $filter->itemsPerPage );
 

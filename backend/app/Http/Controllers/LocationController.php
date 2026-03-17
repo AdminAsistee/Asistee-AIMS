@@ -97,6 +97,7 @@ class LocationController extends Controller {
 			'cleanings.cleaner',
 			'owner',
 			'listings.bookings',
+			'listings.channel_account',
 			'photos'
 		] )->findOrFail( $id );
 
@@ -186,7 +187,7 @@ class LocationController extends Controller {
 		$photo->save();
 
 		return response( Location::with( [
-			'cleanings.cleaner', 'owner', 'listings.bookings', 'photos'
+			'cleanings.cleaner', 'owner', 'listings.bookings', 'listings.channel_account', 'photos'
 		] )->findOrFail( $location_id ), 200 );
 	}
 
@@ -290,7 +291,7 @@ class LocationController extends Controller {
 		$location->update( $data );
 
 		return response( Location::with( [
-			'cleanings.cleaner', 'owner', 'listings.bookings', 'photos'
+			'cleanings.cleaner', 'owner', 'listings.bookings', 'listings.channel_account', 'photos'
 		] )->findOrFail( $location->id ), 200 );
 	}
 

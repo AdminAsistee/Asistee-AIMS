@@ -74,13 +74,35 @@ export interface Location {
 
 
 // ─── Channel Account ──────────────────────────────────────────────────────────
+export type ChannelType = 0 | 1 | 2; // 0=Manual, 1=Airbnb, 2=iCal
+
+export const CHANNEL_LABELS: Record<number, string> = {
+  0: 'Manual',
+  1: 'Airbnb',
+  2: 'iCal',
+};
+
 export interface ChannelAccount {
   id: number;
-  channel: string;
-  channel_id?: number;
-  authentication_token?: string;
+  description: string;
+  channel_id: ChannelType;
+  authentication_token?: string | null;
+  authentication_information?: string | null;
+  listings_count?: number;
+  listings?: Listing[];
   created_at?: string;
   updated_at?: string;
+}
+
+export interface SyncResult {
+  message?: string;
+  error?: string;
+  error_detail?: unknown;
+  listing: number;
+  created_bookings?: number;
+  updated_bookings?: number;
+  created_cleanings?: number;
+  updated_cleanings?: number;
 }
 
 // ─── Listing ──────────────────────────────────────────────────────────────────
